@@ -8,6 +8,7 @@ val scalazVersion = "7.1.4"
 
 libraryDependencies ++= Seq(
   "org.scalaz" %% "scalaz-core" % scalazVersion,
+  "com.chuusai" %% "shapeless" % "2.2.5",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "org.scalacheck" %% "scalacheck" % "1.12.5" % "test",
   "org.typelevel" %% "scalaz-scalatest" % "0.3.0" % "test"
