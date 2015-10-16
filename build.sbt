@@ -4,6 +4,12 @@ version := "1.0"
 
 scalaVersion := "2.11.7"
 
+scalacOptions ++= Seq(
+  "-feature",
+  "-language:higherKinds",
+  "-language:implicitConversions"
+)
+
 val scalazVersion = "7.1.4"
 
 libraryDependencies ++= Seq(

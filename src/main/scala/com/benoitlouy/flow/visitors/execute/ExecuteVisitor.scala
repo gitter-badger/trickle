@@ -1,10 +1,12 @@
 package com.benoitlouy.flow.visitors.execute
 
+import com.benoitlouy.flow.steps.{Zip2Step, MapStep, SourceStep, OutputStep}
 import com.benoitlouy.flow.visitors.Visitor
-import com.benoitlouy.flow.{OutputStep, MapStep, SourceStep}
-import shapeless.{~?>, HMap}
+import shapeless.{HList, ~?>, HMap, Generic}
 import scalaz._
 import Scalaz._
+import shapeless.syntax.std.function._
+import shapeless.ops.function._
 
 class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] {
 
@@ -26,6 +28,18 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] {
       case Success(e) => mapSafe(mapStep.mapper, e)
     }
     put(parentState, mapStep, StepResult(result))
+  }
+
+  def applyProduct[P <: Product, F, L <: HList, R](p: P)(f: F)(implicit gen: Generic.Aux[P, L], fp: FnToProduct.Aux[F, L => R]) =
+    f.toProduct(gen.to(p))
+
+
+  override def visit[I1, I2, O](zipStep: Zip2Step[I1, I2, O], state: HMap[~?>[OutputStep, StepResult]#λ]): HMap[~?>[OutputStep, StepResult]#λ] = {
+    val parent1State = zipStep.parents._1.accept(this, state)
+    val parent2State = zipStep.parents._2.accept(this, state)
+
+    applyProduct(zipStep.parents)((_: OutputStep[I1]).accept(this, state) + (_: OutputStep[I2]).accept(this, state) )
+    state
   }
 
   def mapSafe[I, O](mapper: I => O, e: I) = {
