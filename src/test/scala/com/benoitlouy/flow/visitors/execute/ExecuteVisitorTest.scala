@@ -78,7 +78,7 @@ class ExecuteVisitorTest extends UnitSpec {
     val source1 = SourceStep[Int]()
     val source2 = SourceStep[String]()
 
-    val flow = (source1, source2) zip { (i: Int, s: String) =>  s * i }
+    val flow = (source1, source2) zip { (i: Option[Int], s: Option[String]) =>  s.get * i.get }
 
     val result = ExecuteVisitor(flow, Map(
       source1 -> StepResult[Int](3.successNel),
