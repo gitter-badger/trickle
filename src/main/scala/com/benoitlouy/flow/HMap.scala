@@ -10,7 +10,7 @@ class HMap[R[_, _]](private[HMap] val underlying : Map[Any, Any] = Map.empty) ex
   def +[K, V](kv : (K, V))(implicit ev : R[K, V]) : HMap[R] = new HMap[R](underlying+kv)
   def -[K](k : K) : HMap[R] = new HMap[R](underlying-k)
 
-  def +(other: HMap[R]): HMap[R] = new HMap[R](underlying ++ other.underlying)
+  def ++(other: HMap[R]): HMap[R] = new HMap[R](underlying ++ other.underlying)
 
   implicit def caseRel[K, V](implicit ev : R[K, V]) = Case1[this.type, K, V](get(_).get)
 }
