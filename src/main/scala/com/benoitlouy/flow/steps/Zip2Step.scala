@@ -1,16 +1,15 @@
 package com.benoitlouy.flow.steps
 
 import com.benoitlouy.flow.visitors.Visitor
-import shapeless.{HList, HNil, ::}
 
-trait ZipStep[T <: HList, O] {
+trait ZipStep[T <: Product, O] {
   def parents: T
 }
 
 class Zip2Step[I1, I2, O](parent1: OutputStep[I1], parent2: OutputStep[I2], zipper: (I1, I2) => O)
-  extends InputOutputStep[(I1, I2), O] with ZipStep[(OutputStep[I1] :: OutputStep[I2] :: HNil), O] {
+  extends InputOutputStep[(I1, I2), O] with ZipStep[(OutputStep[I1],OutputStep[I2]), O] {
 
-  override val parents = parent1 :: parent2 :: HNil
+  override val parents = (parent1, parent2)
 
   override val mapper: ((I1, I2)) => O = zipper.tupled
 

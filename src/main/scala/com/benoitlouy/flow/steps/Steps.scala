@@ -1,21 +1,17 @@
 package com.benoitlouy.flow.steps
 
 import com.benoitlouy.flow.visitors.Visitor
+import com.benoitlouy.flow.visitors.execute.ValidationNelException
 
 trait OutputStep[O] {
-  type output = O
   def accept[T](v: Visitor[T], state: T): T
 }
 
 trait InputOutputStep[I, O] extends OutputStep[O] {
-  type input = I
   def mapper: (I => O)
 }
 
-
-
 object Steps {
-  def map[I, O](parent: OutputStep[I])(mapper: => (I => O)): MapStep[I, O] = MapStep(parent, mapper)
 
   def zip[I1, I2, O](parent1: => OutputStep[I1], parent2: => OutputStep[I2])(zipper: => ((I1, I2) => O)): Zip2Step[I1, I2, O] =
     new Zip2Step[I1, I2, O](parent1, parent2, zipper)

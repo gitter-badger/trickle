@@ -1,6 +1,7 @@
 package com.benoitlouy.flow.steps
 
 import com.benoitlouy.flow.visitors.Visitor
+import com.benoitlouy.flow.visitors.execute.ValidationNelException
 
 class MapStep[I, O](val parent: OutputStep[I], val mapper: I => O) extends InputOutputStep[I, O] {
   override def accept[T](v: Visitor[T], state: T): T = v.visit(this, state)

@@ -4,14 +4,12 @@ import com.benoitlouy.flow.HMap
 import com.benoitlouy.flow.steps._
 import com.benoitlouy.flow.visitors.Visitor
 import shapeless._
-import shapeless.ops.hlist.{Mapper, Mapped}
 import scalaz.Failure
 import scalaz.Success
 import scalaz.NonEmptyList
 import scalaz.syntax.validation._
-import shapeless.syntax.std.function._
 import shapeless.syntax.std.tuple._
-import shapeless.ops.function._
+import shapeless.syntax.std.tuple.productTupleOps
 import shapeless.poly._
 
 class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] {
@@ -35,8 +33,8 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] {
     put(parentState, mapStep, StepResult(result))
   }
 
-  def applyProduct[P <: Product, F, L <: HList, R](p: P)(f: F)(implicit gen: Generic.Aux[P, L], fp: FnToProduct.Aux[F, L => R]) =
-    f.toProduct(gen.to(p))
+//  def applyProduct[P <: Product, F, L <: HList, R](p: P)(f: F)(implicit gen: Generic.Aux[P, L], fp: FnToProduct.Aux[F, L => R]) =
+//    f.toProduct(gen.to(p))
 
   override def visit[I1, I2, O](zipStep: Zip2Step[I1, I2, O], state: stateType): stateType = {
     val self = this
@@ -47,43 +45,37 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] {
       implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
     }
 
-    val newState = zipStep.parents map visitParents reduceLeft combineStates
-
-    object getResult extends (OutputStep ~> ValidationNelException) {
-      override def apply[T](f: OutputStep[T]): ValidationNelException[T] = get(newState, f).result
+    val parentStates = zipStep.parents map visitParents
+    val newState = parentStates.foldLeft(state)(combineStates)
+    object getResult extends (OutputStep ~> Option) {
+      override def apply[T](f: OutputStep[T]) = get(newState, f).result match {
+        case Failure(NonEmptyList(e)) => None
+        case Success(e) => Some(e)
+      }
     }
+    val parentResults = zipStep.parents map getResult
 
-    val parentResult = zipStep.parents map getResult
-
-//    val states = zipStep.parents map new MyVisit(this, state)
-//    val newState = applyProduct(zipStep.parents)((_: OutputStep[I1]).accept(this, state) + (_: OutputStep[I2]).accept(this, state))
-//    val input1: ::[StepResult[I1], ::[StepResult[I2], HNil]] = get(newState, zipStep.parents._1) :: get(newState, zipStep.parents._2) :: HNil
-
-
-
-//    val input2 = input1 map myget
     put(state, zipStep, StepResult(new RuntimeException("not executed").failureNel[O]))
   }
 
-  override def visit[T <: HList, O](zipStep: ZipStep[T, O], state: stateType): stateType = {
-    val self = this
-    object visitParents extends (OutputStep ~>> stateType) {
-      override def apply[T](f: OutputStep[T]): stateType = f.accept(self, state)
-    }
-    object combineStates extends Poly {
-      implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
-    }
-
-    val newState = zipStep.parents map visitParents reduceLeft combineStates
-
-    object getResult extends (OutputStep ~> ValidationNelException) {
-      override def apply[T](f: OutputStep[T]): ValidationNelException[T] = get(newState, f).result
-    }
-
-    val parentResult = zipStep.parents map getResult
-
-//    put(state, zipStep, StepResult(new RuntimeException("not executed").failureNel[O]))
-  }
+//  override def visit[T <: HList, O](zipStep: ZipStep[T, O], state: stateType): stateType = {
+//    val self = this
+//    object visitParents extends (OutputStep ~>> stateType) {
+//      override def apply[S](f: OutputStep[S]): stateType = f.accept(self, state)
+//    }
+//    object combineStates extends Poly {
+//      implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
+//    }
+//
+//    val newState = zipStep.parents map visitParents reduceLeft combineStates
+//
+//    object getResult extends (OutputStep ~> ValidationNelException) {
+//      override def apply[T](f: OutputStep[T]): ValidationNelException[T] = get(newState, f).result
+//    }
+//
+//    val parentResult = zipStep.parents map getResult
+//
+//  }
 
 //  override def visit[I1, I2, I3, O](zipStep: Zip3Step[I1, I2, I3, O], state: stateType): stateType = state
 
