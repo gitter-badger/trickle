@@ -46,6 +46,14 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
     }
   }
 
+
+  override def visit[I, O](zipStep: Zip1Step[I, O], state: stateType): stateType = {
+    val newState = zipStep.parents.foldLeft(state)(visitParents)
+    object getResult extends GetResults(newState)
+    val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).head)
+    put(state, zipStep, StepResult(result))
+  }
+
   override def visit[I1, I2, O](zipStep: Zip2Step[I1, I2, O], state: stateType): stateType = {
     val newState = zipStep.parents.foldLeft(state)(visitParents)
     object getResult extends GetResults(newState)
