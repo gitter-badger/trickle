@@ -1,16 +1,6 @@
 package com.benoitlouy.flow.steps
 
-import com.benoitlouy.flow.visitors.Visitor
-
-trait OutputStep[O] {
-  def accept[T](v: Visitor[T], state: T): T
-}
-
-trait InputOutputStep[I, O] extends OutputStep[O] {
-  def mapper: (I => O)
-}
-
-object Steps {
+object StepOperators {
 
   implicit class MapOperatorConverter[I](val parent: OutputStep[I]) extends AnyVal {
     def map[O](mapper: I => O): MapStep[I, O] = MapStep(parent, mapper)
