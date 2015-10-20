@@ -6,7 +6,8 @@ import com.benoitlouy.flow.visitors.Visitor
 import scalaz.Failure
 import scalaz.Success
 import scalaz.NonEmptyList
-import scalaz.syntax.validation.ToValidationOps
+//import scalaz.syntax.validation.ToValidationOps
+import com.benoitlouy.flow.visitors.execute.ToValidationNelExOps._
 import shapeless.poly._
 import shapeless.{~?>, Poly}
 
@@ -16,7 +17,7 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
 
   override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
     getOption(state, sourceStep) match {
-      case None => put(state, sourceStep, StepResult(InputMissingException("missing input").failureNel[O]))
+      case None => put(state, sourceStep, StepResult(InputMissingException("missing input").failureNelEx[O]))
       case _ => state
     }
   }
@@ -32,7 +33,7 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
   class GetResults(state: stateType) extends (OutputStep ~> Option) {
     override def apply[T](f: OutputStep[T]): Option[T] = get(state, f).result match {
       case Failure(NonEmptyList(e)) => None
-      case Success(e) => Some(e)
+      case Success(e) => e
     }
   }
 
@@ -59,11 +60,11 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
     put(state, zipStep, StepResult(result))
   }
 
-  def applySafe[I, O](mapper: I => O, e: I) = {
+  def applySafe[I, O](mapper: I => Option[O], e: I) = {
     try {
-      mapper(e).successNel
+      mapper(e).successNelEx
     } catch {
-      case e: Exception => e.failureNel[O]
+      case e: Exception => e.failureNelEx[O]
     }
   }
 

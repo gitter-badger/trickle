@@ -7,5 +7,5 @@ trait OutputStep[O] {
 }
 
 trait InputOutputStep[I, O] extends OutputStep[O] {
-  def mapper: (I => O)
+  def mapper: (I => Option[O])
 }
