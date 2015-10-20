@@ -3,8 +3,8 @@ package com.benoitlouy.flow.steps
 object StepOperators {
 
   implicit class MapOperatorConverter[I](val parent: OutputStep[I]) extends AnyVal {
-    def map[O](mapper: I => O): MapStep[I, O] = MapStep(parent, mapper)
-    def map[O](mapper: => (I => O)): MapStep[I, O] = map(mapper)
+    def map[O](mapper: Option[I] => O): Zip1Step[I, O] = new Zip1Step(parent, mapper)
+    def map[O](mapper: => (Option[I] => O)): Zip1Step[I, O] = map(mapper)
   }
 
   implicit class Zip2OperatorConverter[I1, I2](val parents: (OutputStep[I1], OutputStep[I2])) extends AnyVal {

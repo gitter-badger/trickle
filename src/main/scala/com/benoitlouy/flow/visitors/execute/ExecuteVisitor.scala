@@ -21,16 +21,6 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
     }
   }
 
-  override def visit[I, O](mapStep: MapStep[I, O], state: stateType): stateType = {
-    val parentState = mapStep.parent.accept(this, state)
-    val parentResult: StepResult[I] = get(parentState, mapStep.parent)
-    val result: ValidationNelException[O] = parentResult.result match {
-      case Failure(NonEmptyList(e)) => e.failureNel[O]
-      case Success(e) => applySafe(mapStep.mapper, e)
-    }
-    put(parentState, mapStep, StepResult(result))
-  }
-
   object visitParents extends Poly {
     implicit def caseStep[O] = use((state: stateType, step: OutputStep[O]) => state ++ step.accept(self, state))
   }

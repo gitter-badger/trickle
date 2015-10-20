@@ -1,10 +1,9 @@
 package com.benoitlouy.flow.visitors.execute
 
-import com.benoitlouy.flow.steps.{Zip2Step, MapStep, SourceStep, StepOperators}
+import com.benoitlouy.flow.steps._
 import com.benoitlouy.test.UnitSpec
 import StepOperators._
 import scalaz._
-import Scalaz._
 
 class ExecuteVisitorTest extends UnitSpec {
 
@@ -27,7 +26,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "execute mapping step" in {
     val source = SourceStep[Int]()
 
-    val flow = source map { (_: Int).toString }
+    val flow = source map { (_: Option[Int]).get.toString }
 
     val result = ExecuteVisitor(flow, source -> 1)
 
@@ -37,7 +36,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "fail when executing mapping step and input is missing" in {
     val source = SourceStep[Int]()
 
-    val flow = source map { (_: Int).toString }
+    val flow = source map { (_: Option[Int]).get.toString }
 
     val result = ExecuteVisitor(flow)
 
@@ -51,7 +50,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "fail when mapping step throws" in {
     val source = SourceStep[Int]()
 
-    val flow: MapStep[Int, String] = source map { (i: Int) => throw new RuntimeException("error") }
+    val flow: Zip1Step[Int, String] = source map { (i: Option[Int]) => throw new RuntimeException("error") }
 
     val result = ExecuteVisitor(flow, source -> 1)
 
@@ -65,7 +64,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "execute chained mapping steps" in {
     val source = SourceStep[Int]()
 
-    val inc = (i: Int) => i + 1
+    val inc = (i: Option[Int]) => i.get + 1
 
     val flow = source map { inc } map { inc } map { inc }
 
@@ -91,8 +90,8 @@ class ExecuteVisitorTest extends UnitSpec {
     val source1 = SourceStep[Int]()
     val source2 = SourceStep[String]()
 
-    val flow = (source1 map { i: Int => i * 2 },
-      source2 map { s: String => s + s}, source1) zip {
+    val flow = (source1 map { i: Option[Int] => i.get * 2 },
+      source2 map { s: Option[String] => s.get + s.get}, source1) zip {
       (i: Option[Int], s: Option[String], j: Option[Int]) => s.get * (i.get + j.get)
     }
 
