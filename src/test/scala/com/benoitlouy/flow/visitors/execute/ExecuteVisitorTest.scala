@@ -29,7 +29,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "execute mapping step" in {
     val source = SourceStep[Int]()
 
-    val flow = source map { _ oMap { _.toString } }
+    val flow = source map { _ mMap { _.toString } }
 
     val result = ExecuteVisitor(flow, source -> 1)
 
@@ -39,7 +39,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "fail when executing mapping step and input is missing" in {
     val source = SourceStep[Int]()
 
-    val f: StepIO[Int] => StepIO[String] = _ oMap { _.toString }
+    val f: StepIO[Int] => StepIO[String] = _ mMap { _.toString }
 
     val flow = source map { f }
 
@@ -66,10 +66,24 @@ class ExecuteVisitorTest extends UnitSpec {
     e.getMessage shouldBe "error"
   }
 
+  it should "fail when mapping step fails" in {
+    val source = SourceStep[Int]()
+
+    val flow = source map { x => new RuntimeException("error").failure }
+
+    val result = ExecuteVisitor(flow, source -> 1)
+
+    result.result shouldBe failure
+
+    val StepResult(Failure(NonEmptyList(e))) = result
+
+    e.getMessage shouldBe "error"
+  }
+
   it should "execute chained mapping steps" in {
     val source = SourceStep[Int]()
 
-    val inc = (_: StepIO[Int]) oMap { _ + 1 }
+    val inc = (_: StepIO[Int]) mMap { _ + 1 }
 
     val flow = source map { inc } map { inc } map { inc }
 
@@ -95,8 +109,8 @@ class ExecuteVisitorTest extends UnitSpec {
     val source1 = SourceStep[Int]()
     val source2 = SourceStep[String]()
 
-    val flow = (source1 map { _ oMap { _ * 2 } },
-      source2 map { _ oMap { s => s + s } }, source1) zip {
+    val flow = (source1 map { _ mMap { _ * 2 } },
+      source2 map { _ mMap { s => s + s } }, source1) zip {
       (i, s, j) => (i |@| s |@| j) { case (a, b, c) => Some(b.get * (a.get + c.get))}
     }
 

@@ -14,7 +14,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
   override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
     val e = getOption(state, sourceStep)
     e match {
-      case None => put(state, sourceStep, StepResult(InputMissingException("missing input").failureNelEx[O]))
+      case None => put(state, sourceStep, StepResult(InputMissingException("missing input").failure[O]))
       case _ => state
     }
   }
@@ -58,7 +58,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
     try {
       mapper(e)
     } catch {
-      case e: Exception => e.failureNelEx[O]
+      case e: Exception => e.failure[O]
     }
   }
 
@@ -79,7 +79,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
 object ExecuteVisitor {
   def apply[O](step: OptionStep[O], input: (OutputStep[_], Any)*) = {
     val m = Map(input:_*) mapValues { x =>
-      StepResult(x.successNelEx)
+      StepResult(x.success)
     }
     new ExecuteVisitor().execute(step, new HMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
   }

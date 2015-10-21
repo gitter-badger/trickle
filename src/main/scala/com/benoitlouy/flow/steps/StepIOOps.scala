@@ -3,16 +3,15 @@ package com.benoitlouy.flow.steps
 import scalaz.Validation
 
 class StepIOFailureOps(ex: Exception) {
-  def failureNelEx[X]: StepIO[X] = Validation.failureNel[Exception, Option[X]](ex)
+  def failure[X]: StepIO[X] = Validation.failureNel[Exception, Option[X]](ex)
 }
 
 class StepIOSuccessOps[A](self: A) {
-  def successEx: Validation[Exception, Option[A]] = Validation.success[Exception, Option[A]](Option(self))
-  def successNelEx: StepIO[A] = successEx.toValidationNel
+  def success: StepIO[A] = Validation.success[Exception, Option[A]](Option(self)).toValidationNel
 }
 
 class StepIOOps[A](self: StepIO[A]) {
-  def oMap[B](f: A => B): StepIO[B] = self map { _ map f }
+  def mMap[B](f: A => B): StepIO[B] = self map { _ map f }
 }
 
 object StepIOOps {
