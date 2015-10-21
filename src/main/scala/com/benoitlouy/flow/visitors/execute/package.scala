@@ -1,8 +1,9 @@
 package com.benoitlouy.flow.visitors
 
 
+import scala.util.Success
 import scalaz.{Validation, ValidationNel}
-
+//import scalaz.syntax._
 
 
 package object execute {
@@ -17,8 +18,15 @@ package object execute {
     def successNelEx: ValidationNelException[A] = successEx.toValidationNel
   }
 
+  class ValidationNelExceptionMethods[A](self: ValidationNelException[A]) {
+    def oMap[B](f: A => B): ValidationNelException[B] = self map { _ map f }
+  }
+
   object ToValidationNelExOps {
     implicit def ToValidationNelExceptionFailureOps(ex: Exception): ValidationNelExceptionOps = new ValidationNelExceptionOps(ex)
     implicit def ToValidationNelExceptionSuccessOps[A](a: A): ValidationNelExceptionOps2[A] = new ValidationNelExceptionOps2(a)
+    implicit def ToValidationNelExceptionMethods[A](self: ValidationNelException[A]): ValidationNelExceptionMethods[A] = new ValidationNelExceptionMethods(self)
   }
+
+
 }

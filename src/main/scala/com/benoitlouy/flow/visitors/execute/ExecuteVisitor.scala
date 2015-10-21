@@ -45,8 +45,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
     val newState = zipStep.parents.foldLeft(state)(visitParents)
     object getResult extends GetResults(newState)
     val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
-    state
-//    put(state, zipStep, StepResult(result))
+    put(newState, zipStep, StepResult(result))
   }
 
 
@@ -54,8 +53,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
     val newState = zipStep.parents.foldLeft(state)(visitParents)
     object getResult extends GetResults(newState)
     val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
-    state
-//    put(state, zipStep, StepResult(result))
+    put(newState, zipStep, StepResult(result))
   }
 
   def applySafe[I, O](mapper: I => ValidationNelException[O], e: I) = {
@@ -83,7 +81,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
 object ExecuteVisitor {
   def apply[O](step: OptionStep[O], input: (OutputStep[_], Any)*) = {
     val m = Map(input:_*) mapValues { x =>
-      StepResult(Option(x).successNelEx)
+      StepResult(x.successNelEx)
     }
     new ExecuteVisitor().execute(step, new HMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
   }
