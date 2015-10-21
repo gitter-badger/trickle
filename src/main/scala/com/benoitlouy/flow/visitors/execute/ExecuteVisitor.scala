@@ -6,32 +6,34 @@ import com.benoitlouy.flow.visitors.Visitor
 import scalaz.Failure
 import scalaz.Success
 import scalaz.NonEmptyList
-//import scalaz.syntax.validation.ToValidationOps
 import com.benoitlouy.flow.visitors.execute.ToValidationNelExOps._
 import shapeless.poly._
 import shapeless.{~?>, Poly}
 
-class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { self =>
+class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { self =>
 
-  implicit val SO1 = ~?>.rel[OutputStep, StepResult]
+
+  implicit object constraint extends (OptionStep ~?> StepResult)
+//  implicit val SO1 = ~?>.rel[OutputStep, StepResult]
 
   override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
-    getOption(state, sourceStep) match {
+    val e = getOption(state, sourceStep)
+    e match {
       case None => put(state, sourceStep, StepResult(InputMissingException("missing input").failureNelEx[O]))
       case _ => state
     }
   }
 
   object visitParents extends Poly {
-    implicit def caseStep[O] = use((state: stateType, step: OutputStep[O]) => state ++ step.accept(self, state))
+    implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state ++ step.accept(self, state))
   }
 
   object combineStates extends Poly {
     implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
   }
 
-  class GetResults(state: stateType) extends (OutputStep ~> Option) {
-    override def apply[T](f: OutputStep[T]): Option[T] = get(state, f).result match {
+  class GetResults(state: stateType) extends (OptionStep ~> Option) {
+    override def apply[T](f: OptionStep[T]): Option[T] = get(state, f).result match {
       case Failure(NonEmptyList(e)) => None
       case Success(e) => e
     }
@@ -42,14 +44,15 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
     val newState = zipStep.parents.foldLeft(state)(visitParents)
     object getResult extends GetResults(newState)
     val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).head)
-    put(state, zipStep, StepResult(result))
+    put(newState, zipStep, StepResult(result))
   }
 
   override def visit[I1, I2, O](zipStep: Zip2Step[I1, I2, O], state: stateType): stateType = {
     val newState = zipStep.parents.foldLeft(state)(visitParents)
     object getResult extends GetResults(newState)
     val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
-    put(state, zipStep, StepResult(result))
+    state
+//    put(state, zipStep, StepResult(result))
   }
 
 
@@ -57,7 +60,8 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
     val newState = zipStep.parents.foldLeft(state)(visitParents)
     object getResult extends GetResults(newState)
     val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
-    put(state, zipStep, StepResult(result))
+    state
+//    put(state, zipStep, StepResult(result))
   }
 
   def applySafe[I, O](mapper: I => Option[O], e: I) = {
@@ -68,14 +72,14 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
     }
   }
 
-  def put[O](state: HMap[~?>[OutputStep, StepResult]#λ], step: OutputStep[O], stepResult: StepResult[O]) = {
+  def put[O](state: HMap[~?>[OptionStep, StepResult]#λ], step: OptionStep[O], stepResult: StepResult[O]) = {
     state + (step, stepResult)
   }
 
-  def getOption[O](state: HMap[~?>[OutputStep, StepResult]#λ], step: OutputStep[O]): Option[StepResult[O]] = state.get(step)
-  def get[O](state: HMap[~?>[OutputStep, StepResult]#λ], step: OutputStep[O]): StepResult[O] = getOption(state, step).get
+  def getOption[O](state: stateType, step: OptionStep[O]): Option[StepResult[O]] = state.get(step)
+  def get[O](state: stateType, step: OptionStep[O]): StepResult[O] = getOption(state, step).get
 
-  def execute[O](step: OutputStep[O], input: HMap[~?>[OutputStep, StepResult]#λ]): StepResult[O] = {
+  def execute[O](step: OptionStep[O], input: stateType): StepResult[O] = {
     val state = step.accept(this, input)
     get(state, step)
   }
@@ -83,8 +87,10 @@ class ExecuteVisitor extends Visitor[HMap[(OutputStep ~?> StepResult)#λ]] { sel
 }
 
 object ExecuteVisitor {
-  def apply[O](step: OutputStep[O], input: (OutputStep[_], Any)*) = {
-    val m = Map(input:_*) mapValues { x => StepResult(x.successNel) }
-    new ExecuteVisitor().execute(step, new HMap[~?>[OutputStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
+  def apply[O](step: OptionStep[O], input: (OutputStep[_], Any)*) = {
+    val m = Map(input:_*) mapValues { x =>
+      StepResult(Option(x).successNelEx)
+    }
+    new ExecuteVisitor().execute(step, new HMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
   }
 }
