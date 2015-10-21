@@ -2,16 +2,14 @@ package com.benoitlouy.flow.visitors.execute
 
 import com.benoitlouy.flow.HMap
 import com.benoitlouy.flow.steps._
+import com.benoitlouy.flow.steps.StepIOOps._
 import com.benoitlouy.flow.visitors.Visitor
-import com.benoitlouy.flow.visitors.execute.ToValidationNelExOps._
 import shapeless.poly._
 import shapeless.{~?>, Poly}
 
 class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { self =>
 
-
   implicit object constraint extends (OptionStep ~?> StepResult)
-//  implicit val SO1 = ~?>.rel[OutputStep, StepResult]
 
   override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
     val e = getOption(state, sourceStep)
@@ -29,8 +27,8 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
     implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
   }
 
-  class GetResults(state: stateType) extends (OptionStep ~> ValidationNelException) {
-    override def apply[T](f: OptionStep[T]): ValidationNelException[T] = get(state, f).result
+  class GetResults(state: stateType) extends (OptionStep ~> StepIO) {
+    override def apply[T](f: OptionStep[T]): StepIO[T] = get(state, f).result
   }
 
 
@@ -56,7 +54,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
     put(newState, zipStep, StepResult(result))
   }
 
-  def applySafe[I, O](mapper: I => ValidationNelException[O], e: I) = {
+  def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
     try {
       mapper(e)
     } catch {

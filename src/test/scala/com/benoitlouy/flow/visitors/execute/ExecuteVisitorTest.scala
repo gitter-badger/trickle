@@ -1,8 +1,8 @@
 package com.benoitlouy.flow.visitors.execute
 
 import com.benoitlouy.flow.steps._
+import com.benoitlouy.flow.steps.StepIOOps._
 import com.benoitlouy.test.UnitSpec
-import com.benoitlouy.flow.visitors.execute.ToValidationNelExOps._
 import StepOperators._
 import scalaz._
 import Scalaz._
@@ -14,7 +14,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val result = ExecuteVisitor(source, source -> 1)
 
-    val res: ValidationNelException[Int] = result.result
+    val res: StepIO[Int] = result.result
     result.result shouldBe Success(Some(1))
   }
 
@@ -29,7 +29,6 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "execute mapping step" in {
     val source = SourceStep[Int]()
 
-//    val flow = source map { _.map { _.map { _.toString } } }
     val flow = source map { _ oMap { _.toString } }
 
     val result = ExecuteVisitor(flow, source -> 1)
@@ -40,7 +39,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "fail when executing mapping step and input is missing" in {
     val source = SourceStep[Int]()
 
-    val f: ValidationNelException[Int] => ValidationNelException[String] = _ oMap { _.toString }
+    val f: StepIO[Int] => StepIO[String] = _ oMap { _.toString }
 
     val flow = source map { f }
 
@@ -70,7 +69,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "execute chained mapping steps" in {
     val source = SourceStep[Int]()
 
-    val inc = (_: ValidationNelException[Int]) oMap { _ + 1 }
+    val inc = (_: StepIO[Int]) oMap { _ + 1 }
 
     val flow = source map { inc } map { inc } map { inc }
 

@@ -1,5 +1,7 @@
 package com.benoitlouy.flow.visitors.execute
 
-case class StepResult[+T](result: ValidationNelException[T]) {
+import com.benoitlouy.flow.steps.StepIO
+
+case class StepResult[+T](result: StepIO[T]) {
 
 }
