@@ -2,6 +2,7 @@ package com.benoitlouy.flow.visitors.execute
 
 import com.benoitlouy.flow.steps._
 import com.benoitlouy.test.UnitSpec
+import com.benoitlouy.flow.visitors.execute.ToValidationNelExOps._
 import StepOperators._
 import scalaz._
 import Scalaz._
@@ -28,7 +29,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "execute mapping step" in {
     val source = SourceStep[Int]()
 
-    val flow = source map { _.map { _.toString } }
+    val flow = source map { _.map { _.toString }.successNelEx }
 
     val result = ExecuteVisitor(flow, source -> 1)
 
@@ -38,7 +39,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "fail when executing mapping step and input is missing" in {
     val source = SourceStep[Int]()
 
-    val flow = source map { _.map { _.toString } }
+    val flow = source map { _.map { _.toString }.successNelEx }
 
     val result = ExecuteVisitor(flow)
 

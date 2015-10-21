@@ -3,9 +3,6 @@ package com.benoitlouy.flow.visitors.execute
 import com.benoitlouy.flow.HMap
 import com.benoitlouy.flow.steps._
 import com.benoitlouy.flow.visitors.Visitor
-import scalaz.Failure
-import scalaz.Success
-import scalaz.NonEmptyList
 import com.benoitlouy.flow.visitors.execute.ToValidationNelExOps._
 import shapeless.poly._
 import shapeless.{~?>, Poly}
@@ -32,11 +29,8 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
     implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
   }
 
-  class GetResults(state: stateType) extends (OptionStep ~> Option) {
-    override def apply[T](f: OptionStep[T]): Option[T] = get(state, f).result match {
-      case Failure(NonEmptyList(e)) => None
-      case Success(e) => e
-    }
+  class GetResults(state: stateType) extends (OptionStep ~> ValidationNelException) {
+    override def apply[T](f: OptionStep[T]): ValidationNelException[T] = get(state, f).result
   }
 
 
@@ -64,9 +58,9 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
 //    put(state, zipStep, StepResult(result))
   }
 
-  def applySafe[I, O](mapper: I => Option[O], e: I) = {
+  def applySafe[I, O](mapper: I => ValidationNelException[O], e: I) = {
     try {
-      mapper(e).successNelEx
+      mapper(e)
     } catch {
       case e: Exception => e.failureNelEx[O]
     }
