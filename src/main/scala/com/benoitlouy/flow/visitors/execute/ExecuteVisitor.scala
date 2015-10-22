@@ -12,8 +12,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
   implicit object constraint extends (OptionStep ~?> StepResult)
 
   override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
-    val e = getOption(state, sourceStep)
-    e match {
+    getOption(state, sourceStep) match {
       case None => put(state, sourceStep, StepResult(InputMissingException("missing input").failure[O]))
       case _ => state
     }
@@ -31,27 +30,39 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
     override def apply[T](f: OptionStep[T]): StepIO[T] = get(state, f).result
   }
 
+  def ifNotInState[O](state: stateType, step: OptionStep[O])(f: => stateType): stateType = {
+    getOption(state, step) match {
+      case None => f
+      case _ => state
+    }
+  }
 
   override def visit[I, O](zipStep: Zip1Step[I, O], state: stateType): stateType = {
-    val newState = zipStep.parents.foldLeft(state)(visitParents)
-    object getResult extends GetResults(newState)
-    val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).head)
-    put(newState, zipStep, StepResult(result))
+    ifNotInState(state, zipStep) {
+      val newState = zipStep.parents.foldLeft(state)(visitParents)
+      object getResult extends GetResults(newState)
+      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).head)
+      put(newState, zipStep, StepResult(result))
+    }
   }
 
   override def visit[I1, I2, O](zipStep: Zip2Step[I1, I2, O], state: stateType): stateType = {
-    val newState = zipStep.parents.foldLeft(state)(visitParents)
-    object getResult extends GetResults(newState)
-    val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
-    put(newState, zipStep, StepResult(result))
+    ifNotInState(state, zipStep) {
+      val newState = zipStep.parents.foldLeft(state)(visitParents)
+      object getResult extends GetResults(newState)
+      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
+      put(newState, zipStep, StepResult(result))
+    }
   }
 
 
   override def visit[I1, I2, I3, O](zipStep: Zip3Step[I1, I2, I3, O], state: stateType): stateType = {
-    val newState = zipStep.parents.foldLeft(state)(visitParents)
-    object getResult extends GetResults(newState)
-    val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
-    put(newState, zipStep, StepResult(result))
+    ifNotInState(state, zipStep) {
+      val newState = zipStep.parents.foldLeft(state)(visitParents)
+      object getResult extends GetResults(newState)
+      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
+      put(newState, zipStep, StepResult(result))
+    }
   }
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {

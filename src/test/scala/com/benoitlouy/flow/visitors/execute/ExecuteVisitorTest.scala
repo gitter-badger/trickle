@@ -120,4 +120,16 @@ class ExecuteVisitorTest extends UnitSpec {
 
     result.result shouldBe Success(Some("foo" * 18))
   }
+
+  it should "execute each step only once and reuse the output" in {
+    val source = SourceStep[Int]()
+
+    var count = 0
+    val branch = source map { _ mMap { x => count += 1; count } }
+    val flow = (branch, branch) zip { (a, b) => (a |@| b) { case (x, y) => Some((x.get, y.get) )}}
+
+    val result = ExecuteVisitor(flow, source -> 1)
+
+    result.result shouldBe Success(Some((1, 1)))
+  }
 }
