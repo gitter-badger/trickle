@@ -1,11 +1,32 @@
 package com.benoitlouy.flow.visitors.execute
 
-import com.benoitlouy.flow.steps.{SourceStep, Zip1Step, Zip2Step, Zip3Step}
+import com.benoitlouy.flow.steps._
 import com.benoitlouy.flow.visitors.Visitor
+import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
+import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 
 class State {
 
+  object StepLockPoolFactory extends BaseKeyedPooledObjectFactory[OutputStep[_], Any] {
+    override def wrap(value: Any): PooledObject[Any] = new DefaultPooledObject[Any](value)
 
+    override def create(key: OutputStep[_]): AnyRef = AnyRef
+  }
+
+  object StepLockPoolConfig extends GenericKeyedObjectPoolConfig {
+    setMaxTotalPerKey(1)
+  }
+
+  object StepLockPool extends GenericKeyedObjectPool[OutputStep[_], Any](StepLockPoolFactory, StepLockPoolConfig)
+
+  def processStep[O](step: OutputStep[O], f: => Unit) = {
+    val lock = StepLockPool.borrowObject(step)
+    try {
+      f
+    } finally {
+      StepLockPool.returnObject(step, lock)
+    }
+  }
 }
 
 class ParallelExecuteVisitor extends Visitor[State] {
