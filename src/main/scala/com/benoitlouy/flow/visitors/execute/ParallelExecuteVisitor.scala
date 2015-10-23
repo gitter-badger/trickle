@@ -1,30 +1,31 @@
 package com.benoitlouy.flow.visitors.execute
 
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
+
+import com.benoitlouy.flow.MutableHMap
 import com.benoitlouy.flow.steps._
 import com.benoitlouy.flow.visitors.Visitor
 import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
+import shapeless.~?>
 
-class State {
+class State(val content: MutableHMap[(OptionStep ~?> StepResult)#λ]) {
 
-  object StepLockPoolFactory extends BaseKeyedPooledObjectFactory[OutputStep[_], Any] {
+  private object lockPoolFactory extends BaseKeyedPooledObjectFactory[OutputStep[_], Any] {
     override def wrap(value: Any): PooledObject[Any] = new DefaultPooledObject[Any](value)
-
     override def create(key: OutputStep[_]): AnyRef = AnyRef
   }
-
-  object StepLockPoolConfig extends GenericKeyedObjectPoolConfig {
+  private object lockPoolConfig extends GenericKeyedObjectPoolConfig {
     setMaxTotalPerKey(1)
   }
-
-  object StepLockPool extends GenericKeyedObjectPool[OutputStep[_], Any](StepLockPoolFactory, StepLockPoolConfig)
+  private object lockPool extends GenericKeyedObjectPool(lockPoolFactory, lockPoolConfig)
 
   def processStep[O](step: OutputStep[O], f: => Unit) = {
-    val lock = StepLockPool.borrowObject(step)
+    val lock = lockPool.borrowObject(step)
     try {
       f
     } finally {
-      StepLockPool.returnObject(step, lock)
+      lockPool.returnObject(step, lock)
     }
   }
 }
