@@ -1,4 +1,4 @@
-package com.benoitlouy.flow
+package com.benoitlouy.workflow
 
 import com.benoitlouy.test.UnitSpec
 import shapeless.{~?>, Id}

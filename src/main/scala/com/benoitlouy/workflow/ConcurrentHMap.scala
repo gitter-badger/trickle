@@ -1,4 +1,4 @@
-package com.benoitlouy.flow
+package com.benoitlouy.workflow
 
 import scala.collection.concurrent.TrieMap
 

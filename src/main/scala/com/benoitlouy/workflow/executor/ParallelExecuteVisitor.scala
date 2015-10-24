@@ -1,9 +1,8 @@
-package com.benoitlouy.flow.visitors.execute
+package com.benoitlouy.workflow.executor
 
-import com.benoitlouy.flow.ConcurrentHMap
-import com.benoitlouy.flow.steps._
-import com.benoitlouy.flow.steps.StepIOOps._
-import com.benoitlouy.flow.visitors.Visitor
+import com.benoitlouy.workflow.{Visitor, ConcurrentHMap}
+import com.benoitlouy.workflow.step._
+import com.benoitlouy.workflow.step.StepIOOps._
 import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 import shapeless.PolyDefns.{~>>, ~>}

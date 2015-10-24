@@ -1,4 +1,4 @@
-package com.benoitlouy.flow.visitors.execute
+package com.benoitlouy.workflow.executor
 
 class FlowExecutionException(message: String, cause: Option[Throwable] = None) extends Exception(message, cause.orNull)
 

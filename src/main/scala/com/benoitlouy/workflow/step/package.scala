@@ -1,7 +1,7 @@
-package com.benoitlouy.flow
+package com.benoitlouy.workflow
 
 import scalaz.ValidationNel
 
-package object steps {
+package object step {
   type StepIO[T] = ValidationNel[Exception, Option[T]]
 }

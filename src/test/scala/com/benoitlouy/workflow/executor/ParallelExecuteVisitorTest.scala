@@ -1,6 +1,6 @@
-package com.benoitlouy.flow.visitors.execute
+package com.benoitlouy.workflow.executor
 
-import com.benoitlouy.flow.steps._
+import com.benoitlouy.workflow.step._
 import com.benoitlouy.test.UnitSpec
 import StepOperators._
 import StepIOOps._

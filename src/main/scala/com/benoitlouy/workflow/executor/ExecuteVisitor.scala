@@ -1,9 +1,8 @@
-package com.benoitlouy.flow.visitors.execute
+package com.benoitlouy.workflow.executor
 
-import com.benoitlouy.flow.HMap
-import com.benoitlouy.flow.steps._
-import com.benoitlouy.flow.steps.StepIOOps._
-import com.benoitlouy.flow.visitors.Visitor
+import com.benoitlouy.workflow.{Visitor, HMap}
+import com.benoitlouy.workflow.step._
+import com.benoitlouy.workflow.step.StepIOOps._
 import shapeless.poly._
 import shapeless.{~?>, Poly}
 
@@ -21,10 +20,6 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
   object visitParents extends Poly {
     implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state ++ step.accept(self, state))
   }
-
-//  object combineStates extends Poly {
-//    implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
-//  }
 
   class GetResults(state: stateType) extends (OptionStep ~> StepIO) {
     override def apply[T](f: OptionStep[T]): StepIO[T] = get(state, f).result

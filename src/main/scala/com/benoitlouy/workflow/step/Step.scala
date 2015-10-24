@@ -1,6 +1,6 @@
-package com.benoitlouy.flow.steps
+package com.benoitlouy.workflow.step
 
-import com.benoitlouy.flow.visitors.Visitor
+import com.benoitlouy.workflow.Visitor
 
 trait OutputStep[O] {
   def accept[T](v: Visitor[T], state: T): T

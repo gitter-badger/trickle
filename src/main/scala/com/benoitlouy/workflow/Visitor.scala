@@ -1,6 +1,6 @@
-package com.benoitlouy.flow.visitors
+package com.benoitlouy.workflow
 
-import com.benoitlouy.flow.steps._
+import com.benoitlouy.workflow.step._
 
 trait Visitor[T] {
   type stateType = T

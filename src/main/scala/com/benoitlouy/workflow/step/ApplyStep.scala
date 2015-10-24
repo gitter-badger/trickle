@@ -1,12 +1,10 @@
-package com.benoitlouy.flow.steps
+package com.benoitlouy.workflow.step
 
-import com.benoitlouy.flow.visitors.Visitor
-import com.benoitlouy.flow.visitors.execute._
-import shapeless.{::, HNil, HList}
+import com.benoitlouy.workflow.Visitor
+import shapeless.{HNil, HList}
 import shapeless.syntax.std.product._
 
 abstract class ApplyStep[T <: HList, I, O](val parents: T, val zipper: I => StepIO[O]) extends InputOutputStep[I, O]{
-  type parentType = T
   override val mapper: I => StepIO[O] = zipper
 }
 

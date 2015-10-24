@@ -1,4 +1,4 @@
-package com.benoitlouy.flow.steps
+package com.benoitlouy.workflow.step
 
 import scalaz.Validation
 

@@ -1,4 +1,4 @@
-package com.benoitlouy.flow
+package com.benoitlouy.workflow
 
 import shapeless.poly._
 import shapeless.{HMapBuilder, Poly1}
