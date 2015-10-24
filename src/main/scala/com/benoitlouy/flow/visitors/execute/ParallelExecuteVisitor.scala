@@ -1,15 +1,19 @@
 package com.benoitlouy.flow.visitors.execute
 
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap}
-
-import com.benoitlouy.flow.MutableHMap
+import com.benoitlouy.flow.ConcurrentHMap
 import com.benoitlouy.flow.steps._
+import com.benoitlouy.flow.steps.StepIOOps._
 import com.benoitlouy.flow.visitors.Visitor
 import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
-import shapeless.~?>
+import shapeless.PolyDefns.{~>>, ~>}
+import shapeless.{Poly, ~?>}
 
-class State(val content: MutableHMap[(OptionStep ~?> StepResult)#λ]) {
+import scala.concurrent.{Await, Future, blocking}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+
+class State(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) {
 
   private object lockPoolFactory extends BaseKeyedPooledObjectFactory[OutputStep[_], Any] {
     override def wrap(value: Any): PooledObject[Any] = new DefaultPooledObject[Any](value)
@@ -20,22 +24,114 @@ class State(val content: MutableHMap[(OptionStep ~?> StepResult)#λ]) {
   }
   private object lockPool extends GenericKeyedObjectPool(lockPoolFactory, lockPoolConfig)
 
-  def processStep[O](step: OutputStep[O], f: => Unit) = {
+  implicit object constraint extends (OptionStep ~?> StepResult)
+
+  def get[O](k: OptionStep[O]): Option[StepResult[O]] = content.get(k)
+
+  def +=[O](kv: (OptionStep[O], StepResult[O])): State = {
+    content += kv
+    this
+  }
+
+  def ++=(other: State): State = {
+    content ++= other.content
+    this
+  }
+
+  def processStep[O](step: OptionStep[O])(f: => State): State = {
     val lock = lockPool.borrowObject(step)
     try {
-      f
+      get(step) match {
+        case None => f
+        case _ => this
+      }
     } finally {
       lockPool.returnObject(step, lock)
     }
   }
+
+
 }
 
-class ParallelExecuteVisitor extends Visitor[State] {
-  override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = state
+class ParallelExecuteVisitor extends Visitor[State] { self =>
+  override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
+    state.processStep(sourceStep) {
+      state.get(sourceStep) match  {
+        case None => state += (sourceStep, StepResult(InputMissingException("missing input").failure[O]))
+        case _ => state
+      }
+    }
+  }
 
-  override def visit[I, O](zipStep: Zip1Step[I, O], state: stateType): stateType = state
+  object visitParents extends Poly {
+    implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state ++= step.accept(self, state))
+  }
 
-  override def visit[I1, I2, O](zipStep: Zip2Step[I1, I2, O], state: stateType): stateType = state
+  class FutureParents(state: stateType) extends (OptionStep ~>> Future[stateType]) {
+    override def apply[T](f: OptionStep[T]): Future[stateType] = Future {
+      blocking {
+        f.accept(self, state)
+      }
+    }
+  }
 
-  override def visit[I1, I2, I3, O](zipStep: Zip3Step[I1, I2, I3, O], state: stateType): stateType = state
+  object waitForParents extends Poly {
+    implicit def caseFuture = use((state: stateType, future: Future[stateType]) => state ++= Await.result(future, 1 minute))
+  }
+
+  class GetResults(state: stateType) extends (OptionStep ~> StepIO) {
+    override def apply[T](f: OptionStep[T]): StepIO[T] = state.get(f).get.result
+  }
+
+  def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
+    try {
+      mapper(e)
+    } catch {
+      case e: Exception => e.failure[O]
+    }
+  }
+
+  override def visit[I, O](zipStep: Zip1Step[I, O], state: stateType): stateType = {
+    state.processStep(zipStep) {
+      val newState = zipStep.parents.foldLeft(state)(visitParents)
+      object getResult extends GetResults(newState)
+      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).head)
+      state += (zipStep, StepResult(result))
+    }
+  }
+
+  override def visit[I1, I2, O](zipStep: Zip2Step[I1, I2, O], state: stateType): stateType = {
+    state.processStep(zipStep) {
+      object futureParents extends FutureParents(state)
+      val futures = zipStep.parents map { futureParents }
+      val newState = futures.foldLeft(state)(waitForParents)
+      object getResult extends GetResults(newState)
+      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
+      state += (zipStep, StepResult(result))
+    }
+  }
+
+  override def visit[I1, I2, I3, O](zipStep: Zip3Step[I1, I2, I3, O], state: stateType): stateType =  {
+    state.processStep(zipStep) {
+      object futureParents extends FutureParents(state)
+      val futures = zipStep.parents map { futureParents }
+      val newState = futures.foldLeft(state)(waitForParents)
+      object getResult extends GetResults(newState)
+      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
+      state += (zipStep, StepResult(result))
+    }
+  }
+
+  def execute[O](step: OptionStep[O], input: (OutputStep[_], Any)*): StepResult[O] = {
+    val m = Map(input:_*) mapValues { x => StepResult(x.success) }
+    val inputState = new State(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
+    val state = step.accept(this, inputState)
+    state.get(step).get
+  }
+}
+
+object ParallelExecuteVisitor {
+  def apply[O](step: OptionStep[O], input: (OutputStep[_], Any)*) = {
+    new ParallelExecuteVisitor().execute(step, input:_*)
+  }
 }

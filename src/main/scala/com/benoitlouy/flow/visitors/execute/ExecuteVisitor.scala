@@ -22,9 +22,9 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
     implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state ++ step.accept(self, state))
   }
 
-  object combineStates extends Poly {
-    implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
-  }
+//  object combineStates extends Poly {
+//    implicit def caseState = use((s1: stateType, s2: stateType) => s1 ++ s2)
+//  }
 
   class GetResults(state: stateType) extends (OptionStep ~> StepIO) {
     override def apply[T](f: OptionStep[T]): StepIO[T] = get(state, f).result
