@@ -2,11 +2,11 @@ package com.benoitlouy.workflow.executor
 
 import com.benoitlouy.workflow.{Visitor, HMap}
 import com.benoitlouy.workflow.step._
-import com.benoitlouy.workflow.step.StepIOOps._
+import com.benoitlouy.workflow.step.StepIOOperators._
 import shapeless.poly._
 import shapeless.{~?>, Poly}
 
-class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { self =>
+class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with Executor{ self =>
 
   implicit object constraint extends (OptionStep ~?> StepResult)
 
@@ -75,18 +75,16 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] { sel
   def getOption[O](state: stateType, step: OptionStep[O]): Option[StepResult[O]] = state.get(step)
   def get[O](state: stateType, step: OptionStep[O]): StepResult[O] = getOption(state, step).get
 
-  def execute[O](step: OptionStep[O], input: stateType): StepResult[O] = {
-    val state = step.accept(this, input)
-    get(state, step)
+  override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
+    val m = Map(input:_*) mapValues { x => StepResult(x.success) }
+    val state = step.accept(this, new HMap[(OptionStep ~?> StepResult)#λ](m.asInstanceOf[Map[Any, Any]]))
+    get(state, step).result
   }
 
 }
 
 object ExecuteVisitor {
-  def apply[O](step: OptionStep[O], input: (OutputStep[_], Any)*) = {
-    val m = Map(input:_*) mapValues { x =>
-      StepResult(x.success)
-    }
-    new ExecuteVisitor().execute(step, new HMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
+  def apply[O](step: OptionStep[O], input: (OptionStep[_], Any)*) = {
+    new ExecuteVisitor().execute(step, input:_*)
   }
 }

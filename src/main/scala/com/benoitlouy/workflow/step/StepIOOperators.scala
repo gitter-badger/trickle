@@ -10,12 +10,12 @@ class StepIOSuccessOps[A](self: A) {
   def success: StepIO[A] = Validation.success[Exception, Option[A]](Option(self)).toValidationNel
 }
 
-class StepIOOps[A](self: StepIO[A]) {
+class StepIOOperators[A](self: StepIO[A]) {
   def mMap[B](f: A => B): StepIO[B] = self map { _ map f }
 }
 
-object StepIOOps {
+object StepIOOperators {
   implicit def ToStepIOFailureOps(ex: Exception): StepIOFailureOps = new StepIOFailureOps(ex)
   implicit def ToStepIOSuccessOps[A](a: A): StepIOSuccessOps[A] = new StepIOSuccessOps(a)
-  implicit def ToStepIOOps[A](self: StepIO[A]): StepIOOps[A] = new StepIOOps(self)
+  implicit def ToStepIOOps[A](self: StepIO[A]): StepIOOperators[A] = new StepIOOperators(self)
 }

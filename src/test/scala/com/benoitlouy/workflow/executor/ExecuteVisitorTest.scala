@@ -1,7 +1,7 @@
 package com.benoitlouy.workflow.executor
 
 import com.benoitlouy.workflow.step._
-import com.benoitlouy.workflow.step.StepIOOps._
+import com.benoitlouy.workflow.step.StepIOOperators._
 import com.benoitlouy.test.UnitSpec
 import StepOperators._
 import scalaz._
@@ -14,7 +14,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val result = ExecuteVisitor(source, source -> 1)
 
-    result.result shouldBe Success(Some(1))
+    result shouldBe Success(Some(1))
   }
 
   it should "return a failure when executing SourceStep and input is missing" in {
@@ -22,7 +22,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val result = ExecuteVisitor(source)
 
-    result.result shouldBe failure
+    result shouldBe failure
   }
 
   it should "execute mapping step" in {
@@ -32,7 +32,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val result = ExecuteVisitor(flow, source -> 1)
 
-    result.result shouldBe Success(Some("1"))
+    result shouldBe Success(Some("1"))
   }
 
   it should "fail when executing mapping step and input is missing" in {
@@ -44,9 +44,9 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val result = ExecuteVisitor(flow)
 
-    result.result shouldBe failure
+    result shouldBe failure
 
-    val StepResult(Failure(NonEmptyList(InputMissingException(message)))) = result
+    val Failure(NonEmptyList(InputMissingException(message))) = result
 
     message shouldBe "missing input"
   }
@@ -58,9 +58,9 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val result = ExecuteVisitor(flow, source -> 1)
 
-    result.result shouldBe failure
+    result shouldBe failure
 
-    val StepResult(Failure(NonEmptyList(e))) = result
+    val Failure(NonEmptyList(e)) = result
 
     e.getMessage shouldBe "error"
   }
@@ -68,13 +68,13 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "fail when mapping step fails" in {
     val source = SourceStep[Int]()
 
-    val flow = source |> { x => new RuntimeException("error").failure }
+    val flow = source |> { x => new RuntimeException("error").failure[String] }
 
     val result = ExecuteVisitor(flow, source -> 1)
 
-    result.result shouldBe failure
+    result shouldBe failure
 
-    val StepResult(Failure(NonEmptyList(e))) = result
+    val Failure(NonEmptyList(e)) = result
 
     e.getMessage shouldBe "error"
   }
@@ -88,7 +88,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val result = ExecuteVisitor(flow, source -> 1)
 
-    result.result shouldBe Success(Some(4))
+    result shouldBe Success(Some(4))
   }
 
   it should "execute zip step" in {
@@ -101,7 +101,7 @@ class ExecuteVisitorTest extends UnitSpec {
       source1 -> 3,
       source2 -> "foo")
 
-    result.result shouldBe Success(Some("foo" * 3))
+    result shouldBe Success(Some("foo" * 3))
   }
 
   it should "execute complex flow" in {
@@ -117,7 +117,7 @@ class ExecuteVisitorTest extends UnitSpec {
       source1 -> 3,
       source2 -> "foo")
 
-    result.result shouldBe Success(Some("foo" * 18))
+    result shouldBe Success(Some("foo" * 18))
   }
 
   it should "execute each step only once and reuse the output" in {
@@ -129,6 +129,6 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val result = ExecuteVisitor(flow, source -> 1)
 
-    result.result shouldBe Success(Some((1, 1)))
+    result shouldBe Success(Some((1, 1)))
   }
 }

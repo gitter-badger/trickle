@@ -2,7 +2,7 @@ package com.benoitlouy.workflow.executor
 
 import com.benoitlouy.workflow.{Visitor, ConcurrentHMap}
 import com.benoitlouy.workflow.step._
-import com.benoitlouy.workflow.step.StepIOOps._
+import com.benoitlouy.workflow.step.StepIOOperators._
 import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 import shapeless.PolyDefns.{~>>, ~>}
@@ -52,7 +52,7 @@ class State(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) {
 
 }
 
-class ParallelExecuteVisitor extends Visitor[State] { self =>
+class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
   override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
     state.processStep(sourceStep) {
       state.get(sourceStep) match  {
@@ -121,16 +121,16 @@ class ParallelExecuteVisitor extends Visitor[State] { self =>
     }
   }
 
-  def execute[O](step: OptionStep[O], input: (OutputStep[_], Any)*): StepResult[O] = {
+  def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
     val m = Map(input:_*) mapValues { x => StepResult(x.success) }
     val inputState = new State(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
     val state = step.accept(this, inputState)
-    state.get(step).get
+    state.get(step).get.result
   }
 }
 
 object ParallelExecuteVisitor {
-  def apply[O](step: OptionStep[O], input: (OutputStep[_], Any)*) = {
+  def apply[O](step: OptionStep[O], input: (OptionStep[_], Any)*) = {
     new ParallelExecuteVisitor().execute(step, input:_*)
   }
 }
