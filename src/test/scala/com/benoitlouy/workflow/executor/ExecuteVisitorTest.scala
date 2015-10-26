@@ -54,7 +54,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "fail when mapping step throws" in {
     val source = SourceStep[Int]()
 
-    val flow: Zip1Step[Int, String] = source |> { x => throw new RuntimeException("error") }
+    val flow: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error") }
 
     val result = ExecuteVisitor(flow, source -> 1)
 

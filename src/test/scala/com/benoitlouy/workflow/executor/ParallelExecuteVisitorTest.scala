@@ -55,7 +55,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
   it should "fail when mapping step throws" in {
     val source = SourceStep[Int]()
 
-    val flow: Zip1Step[Int, String] = source |> { x => throw new RuntimeException("error") }
+    val flow: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error") }
 
     val result = ParallelExecuteVisitor(flow, source -> 1)
 
@@ -132,5 +132,32 @@ class ParallelExecuteVisitorTest extends UnitSpec {
     val result = flow.executeParallel(source -> 1)
 
     result shouldBe Success(Some((1, 1)))
+  }
+
+  it should "not block on diamond topology" in {
+    val source = SourceStep[Int]()
+
+    val root = source |> { _ mMap { _ + 1 }}
+    val b1 = root |> { _ mMap { _ * 2 }} |> { _ mMap { _.toString }}
+    val b2 = root |> { _ mMap { _ * 3 }}
+
+    val flow = (b1, b2) |> { (b1, b2) => (b1 |@| b2) { case (a, b) => Some((a.get, b.get))}}
+
+    val result = flow.executeParallel(source -> 1)
+    result shouldBe Success(Some(("4", 6)))
+  }
+
+  it should "return failure when parents steps fails" in {
+    val source = SourceStep[Int]()
+
+    val branch1 = source |> { _ mMap { _ + 1 }} |> { x => new RuntimeException("error1").failure[String] }
+    val branch2: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error2")}
+    val flow = (branch1, branch2) |> { (a, b) => (a |@| b) { case (a, b) => Some(a.get + b.get)}}
+
+    val result = flow.executeParallel(source -> 42)
+
+    val Failure(NonEmptyList(ex1, ex2)) = result
+    ex1.getMessage shouldBe "error1"
+    ex2.getMessage shouldBe "error2"
   }
 }

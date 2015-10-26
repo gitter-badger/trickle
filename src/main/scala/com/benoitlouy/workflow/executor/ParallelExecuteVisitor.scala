@@ -7,6 +7,8 @@ import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 import shapeless.PolyDefns.{~>>, ~>}
 import shapeless.{Poly, ~?>}
+import shapeless.ops.hlist._
+import scalaz.concurrent.Task
 
 import scala.concurrent.{Await, Future, blocking}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -66,8 +68,8 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state ++= step.accept(self, state))
   }
 
-  class FutureParents(state: stateType) extends (OptionStep ~>> Future[stateType]) {
-    override def apply[T](f: OptionStep[T]): Future[stateType] = Future {
+  class FutureParents(state: stateType) extends (OptionStep ~>> Task[stateType]) {
+    override def apply[T](f: OptionStep[T]): Task[stateType] = Task {
       blocking {
         f.accept(self, state)
       }
@@ -90,35 +92,38 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     }
   }
 
-  override def visit[I, O](zipStep: Zip1Step[I, O], state: stateType): stateType = {
-    state.processStep(zipStep) {
-      val newState = zipStep.parents.foldLeft(state)(visitParents)
-      object getResult extends GetResults(newState)
-      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).head)
-      state += (zipStep, StepResult(result))
-    }
+  override def visit[I, O](zipStep: Apply1Step[I, O], state: stateType): stateType = {
+    state
+//    state.processStep(zipStep) {
+//      val newState = zipStep.parents.foldLeft(state)(visitParents)
+//      object getResult extends GetResults(newState)
+//      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).head)
+//      state += (zipStep, StepResult(result))
+//    }
   }
 
-  override def visit[I1, I2, O](zipStep: Zip2Step[I1, I2, O], state: stateType): stateType = {
-    state.processStep(zipStep) {
-      object futureParents extends FutureParents(state)
-      val futures = zipStep.parents map { futureParents }
-      val newState = futures.foldLeft(state)(waitForParents)
-      object getResult extends GetResults(newState)
-      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
-      state += (zipStep, StepResult(result))
-    }
+  override def visit[I1, I2, O](zipStep: Apply2Step[I1, I2, O], state: stateType): stateType = {
+    state
+//    state.processStep(zipStep) {
+//      object futureParents extends FutureParents(state)
+//      val futures = zipStep.parents map { futureParents }
+//      Task.gatherUnordered(futures.toList[Task[stateType]]).run
+//      object getResult extends GetResults(state)
+//      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
+//      state += (zipStep, StepResult(result))
+//    }
   }
 
-  override def visit[I1, I2, I3, O](zipStep: Zip3Step[I1, I2, I3, O], state: stateType): stateType =  {
-    state.processStep(zipStep) {
-      object futureParents extends FutureParents(state)
-      val futures = zipStep.parents map { futureParents }
-      val newState = futures.foldLeft(state)(waitForParents)
-      object getResult extends GetResults(newState)
-      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
-      state += (zipStep, StepResult(result))
-    }
+  override def visit[I1, I2, I3, O](zipStep: Apply3Step[I1, I2, I3, O], state: stateType): stateType =  {
+    state
+//    state.processStep(zipStep) {
+//      object futureParents extends FutureParents(state)
+//      val futures = zipStep.parents map { futureParents }
+//      Task.gatherUnordered(futures.toList[Task[stateType]]).run
+//      object getResult extends GetResults(state)
+//      val result = applySafe(zipStep.zipper, (zipStep.parents map getResult).tupled)
+//      state += (zipStep, StepResult(result))
+//    }
   }
 
   def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
@@ -129,7 +134,8 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
   }
 }
 
-object ParallelExecuteVisitor {
+object
+ParallelExecuteVisitor {
   def apply[O](step: OptionStep[O], input: (OptionStep[_], Any)*) = {
     new ParallelExecuteVisitor().execute(step, input:_*)
   }
