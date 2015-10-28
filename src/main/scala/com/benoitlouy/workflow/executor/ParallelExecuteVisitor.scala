@@ -100,28 +100,13 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
   }
 
 
-  def inputWithStateAsync[T <: HList, I <: HList, F <: HList, P2](step: ApplyStep[T, I, _], state: stateType, tasks: F)
-                                                                (implicit toTraversable: ToTraversable.Aux[F, List, Task[stateType]],
-                                                                rightFolder2: RightFolder.Aux[T, (HNil.type , stateType), getResultsAsync.type, P2]): P2 = {
-//    val tasksAndState = step.parents.foldRight((HNil, state))(visitParentsAsync)
-//    val tasks = ic.head(tasksAndState)
-    val l = tasks.toList[Task[stateType]]
-    Task.gatherUnordered(l).run
-    step.parents.foldRight((HNil, state))(getResultsAsync)
-  }
-
-  class FutureParents(state: stateType) extends (OptionStep ~>> Task[stateType]) {
-    override def apply[T](f: OptionStep[T]): Task[stateType] = Task {
-      blocking {
-        f.accept(self, state)
-      }
-    }
-  }
-
-
-
-  class GetResults(state: stateType) extends (OptionStep ~> StepIO) {
-    override def apply[T](f: OptionStep[T]): StepIO[T] = state.get(f).get.result
+  def inputWithStateAsync[T <: HList, I <: HList, P](step: ApplyStep[T, I, _], state: stateType)
+                                                  (implicit rightFolder: RightFolder.Aux[T, (List[Task[stateType]], stateType), visitParentsAsync.type, (List[Task[stateType]], stateType)],
+                                                  rightFolder2: RightFolder.Aux[T, (HNil.type, stateType), getResultsAsync.type, P]) = {
+    val (tasks, newState) = step.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsAsync)
+    Task.gatherUnordered(tasks).run
+    val (input, newState2) = step.parents.foldRight((HNil, newState))(getResultsAsync)
+    (input, newState2)
   }
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
@@ -141,9 +126,7 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
 
   override def visit[I1, I2, O](zipStep: Apply2Step[I1, I2, O], state: stateType): stateType = {
     state.processStep(zipStep) {
-      val (tasks, newState) = zipStep.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsAsync)
-      Task.gatherUnordered(tasks).run
-      val (input, newState2) = zipStep.parents.foldRight((HNil, newState))(getResultsAsync)
+      val (input, newState) = inputWithStateAsync(zipStep, state)
       val result = applySafe(zipStep.f, input)
       newState += (zipStep, StepResult(result))
     }
@@ -151,9 +134,7 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
 
   override def visit[I1, I2, I3, O](zipStep: Apply3Step[I1, I2, I3, O], state: stateType): stateType =  {
     state.processStep(zipStep) {
-      val (tasks, newState) = zipStep.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsAsync)
-      Task.gatherUnordered(tasks).run
-      val (input, newState2) = zipStep.parents.foldRight((HNil, newState))(getResultsAsync)
+      val (input, newState) = inputWithStateAsync(zipStep, state)
       val result = applySafe(zipStep.f, input)
       newState += (zipStep, StepResult(result))
     }
