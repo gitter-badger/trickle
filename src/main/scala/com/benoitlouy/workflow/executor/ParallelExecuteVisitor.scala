@@ -104,32 +104,30 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
     try {
-      mapper(e)
+      StepResult(mapper(e))
     } catch {
-      case e: Exception => e.failure[O]
+      case e: Exception => StepResult(e.failure[O])
     }
   }
 
   override def visit[I, O](zipStep: Apply1Step[I, O], state: stateType): stateType = {
     state.processStep(zipStep) {
       val (input, newState) = inputWithState(zipStep, state)
-      newState += (zipStep, StepResult(applySafe(zipStep.f, input)))
+      newState += (zipStep, applySafe(zipStep.f, input))
     }
   }
 
   override def visit[I1, I2, O](zipStep: Apply2Step[I1, I2, O], state: stateType): stateType = {
     state.processStep(zipStep) {
       val (input, newState) = inputWithStateAsync(zipStep, state)
-      val result = applySafe(zipStep.f, input)
-      newState += (zipStep, StepResult(result))
+      newState += (zipStep, applySafe(zipStep.f, input))
     }
   }
 
   override def visit[I1, I2, I3, O](zipStep: Apply3Step[I1, I2, I3, O], state: stateType): stateType =  {
     state.processStep(zipStep) {
       val (input, newState) = inputWithStateAsync(zipStep, state)
-      val result = applySafe(zipStep.f, input)
-      newState += (zipStep, StepResult(result))
+      newState += (zipStep, applySafe(zipStep.f, input))
     }
   }
 

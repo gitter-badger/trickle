@@ -4,7 +4,6 @@ import com.benoitlouy.workflow.{Visitor, HMap}
 import com.benoitlouy.workflow.step._
 import com.benoitlouy.workflow.step.StepIOOperators._
 import shapeless.ops.hlist._
-import shapeless.ops.tuple.IsComposite
 import shapeless._
 
 class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with Executor{ self =>
@@ -12,7 +11,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
   implicit object constraint extends (OptionStep ~?> StepResult)
 
   override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
-    getOption(state, sourceStep) match {
+    get(state, sourceStep) match {
       case None => put(state, sourceStep, StepResult(InputMissingException("missing input").failure[O]))
       case _ => state
     }
@@ -24,14 +23,7 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
 
   object getResults extends Poly2 {
     implicit def case1[O, T <: HList] = at[OptionStep[O], (T, stateType)] {
-      case (step, (acc, state)) => (get(state, step).result :: acc, state)
-    }
-  }
-
-  case class InputAndState[I <: HList](input: I, state: stateType)
-  object getResults2 extends Poly2 {
-    implicit def case1[O, I <: HList] = at[OptionStep[O], InputAndState[I]] {
-      case (step, accAndState)=> InputAndState(get(accAndState.state, step).result :: accAndState.input, accAndState.state)
+      case (step, (acc, state)) => (get(state, step).get.result :: acc, state)
     }
   }
 
@@ -42,10 +34,8 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
     step.parents.foldRight((HNil, newState))(getResults)
   }
 
-
-
   def ifNotInState[O](state: stateType, step: OptionStep[O])(f: => stateType): stateType = {
-    getOption(state, step) match {
+    get(state, step) match {
       case None => f
       case _ => state
     }
@@ -54,14 +44,14 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
   override def visit[I, O](zipStep: Apply1Step[I, O], state: stateType): stateType = {
     ifNotInState(state, zipStep) {
       val (input, newState) = inputWithState(zipStep, state)
-      put(newState, zipStep, StepResult(applySafe(zipStep.f, input)))
+      put(newState, zipStep, applySafe(zipStep.f, input))
     }
   }
 
   override def visit[I1, I2, O](zipStep: Apply2Step[I1, I2, O], state: stateType): stateType = {
     ifNotInState(state, zipStep) {
       val (input, newState) = inputWithState(zipStep, state)
-      put(newState, zipStep, StepResult(applySafe(zipStep.f, input)))
+      put(newState, zipStep, applySafe(zipStep.f, input))
     }
   }
 
@@ -69,15 +59,15 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
   override def visit[I1, I2, I3, O](zipStep: Apply3Step[I1, I2, I3, O], state: stateType): stateType = {
     ifNotInState(state, zipStep) {
       val (input, newState) = inputWithState(zipStep, state)
-      put(newState, zipStep, StepResult(applySafe(zipStep.f, input)))
+      put(newState, zipStep, applySafe(zipStep.f, input))
     }
   }
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
     try {
-      mapper(e)
+      StepResult(mapper(e))
     } catch {
-      case e: Exception => e.failure[O]
+      case e: Exception => StepResult(e.failure[O])
     }
   }
 
@@ -85,13 +75,12 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
     state + (step, stepResult)
   }
 
-  def getOption[O](state: stateType, step: OptionStep[O]): Option[StepResult[O]] = state.get(step)
-  def get[O](state: stateType, step: OptionStep[O]): StepResult[O] = getOption(state, step).get
+  def get[O](state: stateType, step: OptionStep[O]): Option[StepResult[O]] = state.get(step)
 
   override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
     val m = Map(input:_*) mapValues { x => StepResult(x.success) }
     val state = step.accept(this, new HMap[(OptionStep ~?> StepResult)#λ](m.asInstanceOf[Map[Any, Any]]))
-    get(state, step).result
+    get(state, step).get.result
   }
 
 }

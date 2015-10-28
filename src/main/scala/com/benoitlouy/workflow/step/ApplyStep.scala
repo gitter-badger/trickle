@@ -1,12 +1,10 @@
 package com.benoitlouy.workflow.step
 
 import com.benoitlouy.workflow.Visitor
-import shapeless.ops.function.FnToProduct
 import shapeless.{HNil, HList, ::}
 import shapeless.syntax.std.product._
 import shapeless.syntax.std.function._
 
-import scalaz.{NonEmptyList, Validation}
 
 abstract class ApplyStep[T <: HList, I, O](val parents: T, val f: I => StepIO[O]) extends OptionStep[O] { //InputOutputStep[I, O]{
   type parentsType = T
