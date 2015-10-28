@@ -88,25 +88,18 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     }
   }
 
-  object getResultsAsync extends Poly2 {
-    implicit def case1[O, T <: HList] = at[OptionStep[O], (T, stateType)] {
-      case (step, (inputs, state)) => (state.get(step).get.result :: inputs, state)
-    }
-  }
-
   def tasksWithState[T <: HList, I <: HList, P](step: ApplyStep[T, I, _], state: stateType)
-                                (implicit rightFolder: RightFolder.Aux[T, (HNil.type, stateType), visitParentsAsync.type , P]): P = {
+                                               (implicit rightFolder: RightFolder.Aux[T, (HNil.type, stateType), visitParentsAsync.type , P]): P = {
     step.parents.foldRight((HNil, state))(visitParentsAsync)
   }
 
 
   def inputWithStateAsync[T <: HList, I <: HList, P](step: ApplyStep[T, I, _], state: stateType)
                                                   (implicit rightFolder: RightFolder.Aux[T, (List[Task[stateType]], stateType), visitParentsAsync.type, (List[Task[stateType]], stateType)],
-                                                  rightFolder2: RightFolder.Aux[T, (HNil.type, stateType), getResultsAsync.type, P]) = {
+                                                  rightFolder2: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, P]) = {
     val (tasks, newState) = step.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsAsync)
     Task.gatherUnordered(tasks).run
-    val (input, newState2) = step.parents.foldRight((HNil, newState))(getResultsAsync)
-    (input, newState2)
+    step.parents.foldRight((HNil, newState))(getResults)
   }
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
