@@ -3,9 +3,8 @@ package com.benoitlouy.workflow.executor
 import com.benoitlouy.workflow.{Visitor, HMap}
 import com.benoitlouy.workflow.step._
 import com.benoitlouy.workflow.step.StepIOOperators._
-import shapeless.ops.hlist.{RightFolder, Mapper, LeftFolder, ZipConst}
+import shapeless.ops.hlist._
 import shapeless.ops.tuple.IsComposite
-import shapeless.poly._
 import shapeless._
 
 class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with Executor{ self =>
@@ -23,41 +22,27 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
     implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state ++ step.accept(self, state))
   }
 
-  case class Cont[T <: HList](state: stateType, result: T)
-
-  object newGetResult extends Poly {
-    implicit def case1[O, T <: HList] = use((acc: Cont[T], step: OptionStep[O]) => Cont[StepIO[O] :: T](acc.state, get(acc.state, step).result :: acc.result))
-  }
-
-  object newGetResult2 extends Poly2 {
+  object getResults extends Poly2 {
     implicit def case1[O, T <: HList] = at[OptionStep[O], (T, stateType)] {
       case (step, (acc, state)) => (get(state, step).result :: acc, state)
     }
   }
 
-  def visit1[T <: HList, I <: HList, O, P](zipStep: ApplyStep[T, I, O], state: stateType)
-                                       (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
-                                        rightFolder: RightFolder.Aux[T, (HNil.type, stateType), newGetResult2.type, (I, stateType)],
-                                        ic: IsComposite.Aux[(I, stateType), I, _]): stateType = {
-    ifNotInState(state, zipStep) {
-      val newState: stateType = zipStep.parents.foldLeft(state)(visitParents)
-      val input: (I, stateType) = zipStep.parents.foldRight((HNil, state))(newGetResult2)
-      val input2: I = ic.head(input)
-      val result: StepIO[O] = applySafe(zipStep.f, input2)
-      put(newState, zipStep, StepResult(result))
+  case class InputAndState[I <: HList](input: I, state: stateType)
+  object getResults2 extends Poly2 {
+    implicit def case1[O, I <: HList] = at[OptionStep[O], InputAndState[I]] {
+      case (step, accAndState)=> InputAndState(get(accAndState.state, step).result :: accAndState.input, accAndState.state)
     }
   }
 
-
-  type StepState[O] = (OptionStep[O], stateType)
-
-  object getResults2 extends (StepState ~> StepIO) {
-    override def apply[T](f: StepState[T]): StepIO[T] = get(f._2, f._1).result
+  def inputWithState[T <: HList, I <: HList, P](step: ApplyStep[T, I, _], state: stateType)
+                                               (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
+                                                rightFolder: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, P]): P = {
+    val newState = step.parents.foldLeft(state)(visitParents)
+    step.parents.foldRight((HNil, newState))(getResults)
   }
 
-  class GetResults(val state: stateType) extends (OptionStep ~> StepIO) {
-    override def apply[T](f: OptionStep[T]): StepIO[T] = get(state, f).result
-  }
+
 
   def ifNotInState[O](state: stateType, step: OptionStep[O])(f: => stateType): stateType = {
     getOption(state, step) match {
@@ -67,38 +52,26 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
   }
 
   override def visit[I, O](zipStep: Apply1Step[I, O], state: stateType): stateType = {
-    visit1(zipStep, state)
+    ifNotInState(state, zipStep) {
+      val (input, newState) = inputWithState(zipStep, state)
+      put(newState, zipStep, StepResult(applySafe(zipStep.f, input)))
+    }
   }
 
   override def visit[I1, I2, O](zipStep: Apply2Step[I1, I2, O], state: stateType): stateType = {
     ifNotInState(state, zipStep) {
-      val newState: stateType = zipStep.parents.foldLeft(state)(visitParents)
-      object getResults extends GetResults(newState)
-      val input = zipStep.parents map getResults
-      val result = applySafe(zipStep.f, input)
-      put(getResults.state, zipStep, StepResult(result))
+      val (input, newState) = inputWithState(zipStep, state)
+      put(newState, zipStep, StepResult(applySafe(zipStep.f, input)))
     }
   }
 
 
   override def visit[I1, I2, I3, O](zipStep: Apply3Step[I1, I2, I3, O], state: stateType): stateType = {
     ifNotInState(state, zipStep) {
-      val newState: stateType = zipStep.parents.foldLeft(state)(visitParents)
-      object getResults extends GetResults(newState)
-      val input = zipStep.parents map getResults
-      val result = applySafe(zipStep.f, input)
-      put(getResults.state, zipStep, StepResult(result))
+      val (input, newState) = inputWithState(zipStep, state)
+      put(newState, zipStep, StepResult(applySafe(zipStep.f, input)))
     }
   }
-
-  def generateNewState[T <: HList, I <: HList, O](zipStep: ApplyStep[T, I, O], state: stateType)
-                                                 (implicit folder: LeftFolder.Aux[T, stateType, visitParents.type, stateType]): GetResults = {
-    new GetResults(zipStep.parents.foldLeft(state)(visitParents))
-  }
-
-
-
-
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
     try {

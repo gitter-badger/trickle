@@ -8,25 +8,26 @@ import shapeless.syntax.std.function._
 
 import scalaz.{NonEmptyList, Validation}
 
-abstract class ApplyStep[T <: HList, I <: HList, O](val parents: T, val f: I => StepIO[O]) extends OptionStep[O] { //InputOutputStep[I, O]{
+abstract class ApplyStep[T <: HList, I, O](val parents: T, val f: I => StepIO[O]) extends OptionStep[O] { //InputOutputStep[I, O]{
   type parentsType = T
+  type inputType = I
 }
 
-class Apply1Step[I, O](parent: OptionStep[I],
-                       f: StepIO[I] => StepIO[O])
-  extends ApplyStep(parent :: HNil, f.toProduct) {
+class Apply1Step[I, O](parentI: OptionStep[I],
+                       fI: StepIO[I] => StepIO[O])
+  extends ApplyStep(parentI :: HNil, fI.toProduct) {
   override def accept[T](v: Visitor[T], state: T): T = v.visit(this, state)
 }
 
-class Apply2Step[I1, I2, O](parents: (OptionStep[I1], OptionStep[I2]),
+class Apply2Step[I1, I2, O](parentsI: (OptionStep[I1], OptionStep[I2]),
                             f: (StepIO[I1], StepIO[I2]) => StepIO[O])
-  extends ApplyStep(parents.productElements, f.toProduct) {
+  extends ApplyStep(parentsI.productElements, f.toProduct) {
   override def accept[T](v: Visitor[T], state: T): T = v.visit(this, state)
 }
 
-class Apply3Step[I1, I2, I3, O](parents: (OptionStep[I1], OptionStep[I2], OptionStep[I3]),
-                                f: (StepIO[I1], StepIO[I2], StepIO[I3]) => StepIO[O])
-  extends ApplyStep(parents.productElements, f.toProduct) {
+class Apply3Step[I1, I2, I3, O](parentsI: (OptionStep[I1], OptionStep[I2], OptionStep[I3]),
+                                fI: (StepIO[I1], StepIO[I2], StepIO[I3]) => StepIO[O])
+  extends ApplyStep(parentsI.productElements, fI.toProduct) {
   override def accept[T](v: Visitor[T], state: T): T = v.visit(this, state)
 }
 

@@ -110,8 +110,8 @@ class ParallelExecuteVisitorTest extends UnitSpec {
     val source1 = SourceStep[Int]()
     val source2 = SourceStep[String]()
 
-    val flow = (source1 |> { _ mMap { _ * 2 } },
-      source2 |> { _ mMap { s => s + s } }, source1) |> {
+    val flow = (source1 |> { x => println("FOO"); x mMap { _ * 2 } },
+      source2 |> { x => println("BAR"); x mMap { s => s + s } }, source1) |> {
       (i, s, j) => (i |@| s |@| j) { case (a, b, c) => Some(b.get * (a.get + c.get))}
     }
 
