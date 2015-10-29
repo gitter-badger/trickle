@@ -160,4 +160,9 @@ class ParallelExecuteVisitorTest extends UnitSpec {
     ex1.getMessage shouldBe "error1"
     ex2.getMessage shouldBe "error2"
   }
+
+  it should "execute apply step with up to 22 inputs" in {
+    val source = SourceStep[Int]()
+    
+  }
 }
