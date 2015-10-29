@@ -10,9 +10,9 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
 
   implicit object constraint extends (OptionStep ~?> StepResult)
 
-  override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
-    get(state, sourceStep) match {
-      case None => put(state, sourceStep, StepResult(InputMissingException("missing input").failure[O]))
+  override def visit[O](step: SourceStep[O], state: stateType): stateType = {
+    get(state, step) match {
+      case None => put(state, step, StepResult(InputMissingException("missing input").failure[O]))
       case _ => state
     }
   }
@@ -27,11 +27,14 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
     }
   }
 
-  def inputWithState[T <: HList, I <: HList, P](step: ApplyStep[T, I, _], state: stateType)
-                                               (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
-                                                rightFolder: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, P]): P = {
-    val newState = step.parents.foldLeft(state)(visitParents)
-    step.parents.foldRight((HNil, newState))(getResults)
+  def process[T <: HList, I <: HList, P <: I, O](step: ApplyStep[T, I, O], state: stateType)
+                                                (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
+                                                rightFolder: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, (P, stateType)]) = {
+    ifNotInState(state, step) {
+      val newState = step.parents.foldLeft(state)(visitParents)
+      val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
+      put(newState2, step, applySafe(step.f, input))
+    }
   }
 
   def ifNotInState[O](state: stateType, step: OptionStep[O])(f: => stateType): stateType = {
@@ -41,26 +44,16 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
     }
   }
 
-  override def visit[I, O](zipStep: Apply1Step[I, O], state: stateType): stateType = {
-    ifNotInState(state, zipStep) {
-      val (input, newState) = inputWithState(zipStep, state)
-      put(newState, zipStep, applySafe(zipStep.f, input))
-    }
+  override def visit[I, O](step: Apply1Step[I, O], state: stateType): stateType = {
+    process(step, state)
   }
 
-  override def visit[I1, I2, O](zipStep: Apply2Step[I1, I2, O], state: stateType): stateType = {
-    ifNotInState(state, zipStep) {
-      val (input, newState) = inputWithState(zipStep, state)
-      put(newState, zipStep, applySafe(zipStep.f, input))
-    }
+  override def visit[I1, I2, O](step: Apply2Step[I1, I2, O], state: stateType): stateType = {
+    process(step, state)
   }
 
-
-  override def visit[I1, I2, I3, O](zipStep: Apply3Step[I1, I2, I3, O], state: stateType): stateType = {
-    ifNotInState(state, zipStep) {
-      val (input, newState) = inputWithState(zipStep, state)
-      put(newState, zipStep, applySafe(zipStep.f, input))
-    }
+  override def visit[I1, I2, I3, O](step: Apply3Step[I1, I2, I3, O], state: stateType): stateType = {
+    process(step, state)
   }
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {

@@ -5,15 +5,11 @@ import com.benoitlouy.workflow.step._
 import com.benoitlouy.workflow.step.StepIOOperators._
 import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
-import shapeless.PolyDefns.{~>>, ~>}
 import shapeless._
 import shapeless.ops.hlist._
-import shapeless.ops.tuple.IsComposite
 import scalaz.concurrent.Task
 
-import scala.concurrent.{Await, Future, blocking}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
+import scala.concurrent.blocking
 
 class State(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) {
 
@@ -56,10 +52,10 @@ class State(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) {
 }
 
 class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
-  override def visit[O](sourceStep: SourceStep[O], state: stateType): stateType = {
-    state.processStep(sourceStep) {
-      state.get(sourceStep) match  {
-        case None => state += (sourceStep, StepResult(InputMissingException("missing input").failure[O]))
+  override def visit[O](step: SourceStep[O], state: stateType): stateType = {
+    state.processStep(step) {
+      state.get(step) match  {
+        case None => state += (step, StepResult(InputMissingException("missing input").failure[O]))
         case _ => state
       }
     }
@@ -75,31 +71,31 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     }
   }
 
-  def inputWithState[T <: HList, I <: HList, P](step: ApplyStep[T, I, _], state: stateType)
-                                               (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
-                                                rightFolder: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, P]): P = {
-    val newState = step.parents.foldLeft(state)(visitParents)
-    step.parents.foldRight((HNil, newState))(getResults)
+  def process[T <: HList, I <: HList, P <: I, O](step: ApplyStep[T, I, O], state: stateType)
+                                                (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
+                                                rightFolder: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, (P, stateType)]) = {
+    state.processStep(step) {
+      val newState = step.parents.foldLeft(state)(visitParents)
+      val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
+      newState2 +=(step, applySafe(step.f, input))
+    }
   }
 
-  object visitParentsAsync extends Poly2 {
+  object visitParentsParallel extends Poly2 {
     implicit def case1[O] = at[OptionStep[O], (List[Task[stateType]], stateType)] {
       case (step, (tasks, state)) => ( tasks :+ Task { blocking { state ++= step.accept(self, state) }}, state)
     }
   }
 
-  def tasksWithState[T <: HList, I <: HList, P](step: ApplyStep[T, I, _], state: stateType)
-                                               (implicit rightFolder: RightFolder.Aux[T, (HNil.type, stateType), visitParentsAsync.type , P]): P = {
-    step.parents.foldRight((HNil, state))(visitParentsAsync)
-  }
-
-
-  def inputWithStateAsync[T <: HList, I <: HList, P](step: ApplyStep[T, I, _], state: stateType)
-                                                  (implicit rightFolder: RightFolder.Aux[T, (List[Task[stateType]], stateType), visitParentsAsync.type, (List[Task[stateType]], stateType)],
-                                                  rightFolder2: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, P]) = {
-    val (tasks, newState) = step.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsAsync)
-    Task.gatherUnordered(tasks).run
-    step.parents.foldRight((HNil, newState))(getResults)
+  def processParallel[T <: HList, I <: HList, P <: I, O](step: ApplyStep[T, I, O], state: stateType)
+                                                        (implicit rightFolder: RightFolder.Aux[T, (List[Task[stateType]], stateType), visitParentsParallel.type, (List[Task[stateType]], stateType)],
+                                                         rightFolder2: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, (P, stateType)]) = {
+    state.processStep(step) {
+      val (tasks, newState) = step.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsParallel)
+      Task.gatherUnordered(tasks).run
+      val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
+      newState2 += (step, applySafe(step.f, input))
+    }
   }
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
@@ -110,25 +106,16 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     }
   }
 
-  override def visit[I, O](zipStep: Apply1Step[I, O], state: stateType): stateType = {
-    state.processStep(zipStep) {
-      val (input, newState) = inputWithState(zipStep, state)
-      newState += (zipStep, applySafe(zipStep.f, input))
-    }
+  override def visit[I, O](step: Apply1Step[I, O], state: stateType): stateType = {
+    process(step, state)
   }
 
-  override def visit[I1, I2, O](zipStep: Apply2Step[I1, I2, O], state: stateType): stateType = {
-    state.processStep(zipStep) {
-      val (input, newState) = inputWithStateAsync(zipStep, state)
-      newState += (zipStep, applySafe(zipStep.f, input))
-    }
+  override def visit[I1, I2, O](step: Apply2Step[I1, I2, O], state: stateType): stateType = {
+    processParallel(step, state)
   }
 
-  override def visit[I1, I2, I3, O](zipStep: Apply3Step[I1, I2, I3, O], state: stateType): stateType =  {
-    state.processStep(zipStep) {
-      val (input, newState) = inputWithStateAsync(zipStep, state)
-      newState += (zipStep, applySafe(zipStep.f, input))
-    }
+  override def visit[I1, I2, I3, O](step: Apply3Step[I1, I2, I3, O], state: stateType): stateType =  {
+    processParallel(step, state)
   }
 
   def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
