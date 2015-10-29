@@ -69,7 +69,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "fail when mapping step fails" in {
     val source = SourceStep[Int]()
 
-    val flow = source |> { x => new RuntimeException("error").failure[String] }
+    val flow = source |> { x => new RuntimeException("error").failureIO[String] }
 
     val result = flow.execute(source -> 1)
 

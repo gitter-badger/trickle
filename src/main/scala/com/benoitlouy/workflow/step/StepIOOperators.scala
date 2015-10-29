@@ -3,11 +3,11 @@ package com.benoitlouy.workflow.step
 import scalaz.Validation
 
 class StepIOFailureOps(ex: Exception) {
-  def failure[X]: StepIO[X] = Validation.failureNel[Exception, Option[X]](ex)
+  def failureIO[X]: StepIO[X] = Validation.failureNel[Exception, Option[X]](ex)
 }
 
 class StepIOSuccessOps[A](self: A) {
-  def success: StepIO[A] = Validation.success[Exception, Option[A]](Option(self)).toValidationNel
+  def successIO: StepIO[A] = Validation.success[Exception, Option[A]](Option(self)).toValidationNel
 }
 
 class StepIOOperators[A](self: StepIO[A]) {

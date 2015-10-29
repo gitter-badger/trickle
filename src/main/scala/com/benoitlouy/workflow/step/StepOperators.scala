@@ -8,6 +8,7 @@ object StepOperators {
 
   implicit class Apply2OperatorConverter[I1, I2](val parents: (OptionStep[I1], OptionStep[I2])) {
     def |>[O](zipper: (StepIO[I1], StepIO[I2]) => StepIO[O]) = new Apply2Step(parents, zipper)
+    def |>[O](zipper: ((StepIO[I1], StepIO[I2])) => StepIO[O]) = new Apply2Step(parents, Function.untupled(zipper))
   }
 
   implicit class Apply3OperatorConverter[I1, I2, I3](val parents: (OptionStep[I1], OptionStep[I2], OptionStep[I3])) {

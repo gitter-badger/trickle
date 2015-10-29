@@ -53,7 +53,7 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
   override def visit[O](step: SourceStep[O], state: stateType): stateType = {
     state.processStep(step) {
       state.get(step) match  {
-        case None => state += (step, StepResult(InputMissingException("missing input").failure[O]))
+        case None => state += (step, StepResult(InputMissingException("missing input").failureIO[O]))
         case _ => state
       }
     }
@@ -100,7 +100,7 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     try {
       StepResult(mapper(e))
     } catch {
-      case e: Exception => StepResult(e.failure[O])
+      case e: Exception => StepResult(e.failureIO[O])
     }
   }
 
@@ -149,7 +149,7 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
   override def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O](step: Apply22Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O], state: stateType): stateType = processParallel(step, state)
 
   def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
-    val m = Map(input:_*) mapValues { x => StepResult(x.success) }
+    val m = Map(input:_*) mapValues { x => StepResult(x.successIO) }
     val inputState = new State(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
     val state = step.accept(this, inputState)
     state.get(step).get.result

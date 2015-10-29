@@ -5,8 +5,13 @@ import com.benoitlouy.test.UnitSpec
 import ExecutorOperators._
 import StepOperators._
 import StepIOOperators._
-import scalaz._
-import Scalaz._
+import shapeless.Poly2
+import shapeless.syntax.std.tuple._
+import scalaz.Success
+import scalaz.Failure
+import scalaz.NonEmptyList
+import scalaz.Validation
+import scalaz.syntax.apply._
 
 class ParallelExecuteVisitorTest extends UnitSpec {
 
@@ -69,7 +74,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
   it should "fail when mapping step fails" in {
     val source = SourceStep[Int]()
 
-    val flow = source |> { x => new RuntimeException("error").failure[String] }
+    val flow = source |> { x => new RuntimeException("error").failureIO[String] }
 
     val result = flow.executeParallel(source -> 1)
 
@@ -150,9 +155,11 @@ class ParallelExecuteVisitorTest extends UnitSpec {
   it should "return failure when parents steps fails" in {
     val source = SourceStep[Int]()
 
-    val branch1 = source |> { _ mMap { _ + 1 }} |> { x => new RuntimeException("error1").failure[String] }
+    val branch1 = source |> { _ mMap { _ + 1 }} |> { x => new RuntimeException("error1").failureIO[String] }
     val branch2: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error2")}
-    val flow = (branch1, branch2) |> { (a, b) => (a |@| b) { case (a, b) => Some(a.get + b.get)}}
+    val flow = (branch1, branch2) |> { (a, b) =>
+      (a |@| b) { case (a, b) => Some(a.get + b.get)}
+    }
 
     val result = flow.executeParallel(source -> 42)
 
@@ -161,8 +168,22 @@ class ParallelExecuteVisitorTest extends UnitSpec {
     ex2.getMessage shouldBe "error2"
   }
 
-  it should "execute apply step with up to 22 inputs" in {
+  it should "execute apply step with up to 4 inputs" in {
     val source = SourceStep[Int]()
-    
+
+    val branch1 = source |> { _ mMap { _ + 1} }
+    val branch2 = source |> { _ mMap { _ + 2} }
+
+    object sum extends Poly2 {
+      implicit def caseStepIOInt: Case.Aux[StepIO[Int], StepIO[Int], StepIO[Int]] = at[StepIO[Int], StepIO[Int]] {
+        (a, b) => (a |@| b) { (i, j) => Some(i.get + j.get) }
+      }
+    }
+
+    val flow = (branch1, branch2) |> { t => t.foldLeft(0.successIO)(sum) }
+
+    val result = flow.executeParallel(source -> 1)
   }
+
+
 }
