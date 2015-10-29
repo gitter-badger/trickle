@@ -21,7 +21,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
   it should "return a failure when executing SourceStep and input is missing" in {
     val source = SourceStep[Int]()
 
-    val result = ParallelExecuteVisitor(source)
+    val result = source.executeParallel()
 
     result shouldBe failure
   }
@@ -31,7 +31,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
 
     val flow = source |> { _ mMap { _.toString } }
 
-    val result = ParallelExecuteVisitor(flow, source -> 1)
+    val result = flow.executeParallel(source -> 1)
 
     result shouldBe Success(Some("1"))
   }
@@ -43,7 +43,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
 
     val flow = source |> { f }
 
-    val result = ParallelExecuteVisitor(flow)
+    val result = flow.executeParallel()
 
     result shouldBe failure
 
@@ -57,7 +57,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
 
     val flow: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error") }
 
-    val result = ParallelExecuteVisitor(flow, source -> 1)
+    val result = flow.executeParallel(source -> 1)
 
     result shouldBe failure
 
@@ -71,7 +71,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
 
     val flow = source |> { x => new RuntimeException("error").failure[String] }
 
-    val result = ParallelExecuteVisitor(flow, source -> 1)
+    val result = flow.executeParallel(source -> 1)
 
     result shouldBe failure
 
@@ -87,7 +87,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
 
     val flow = source |> { inc } |> { inc } |> { inc }
 
-    val result = ParallelExecuteVisitor(flow, source -> 1)
+    val result = flow.executeParallel(source -> 1)
 
     result shouldBe Success(Some(4))
   }
@@ -98,7 +98,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
 
     val flow = (source1, source2) |> { (i, s) =>  (i |@| s) { case (a, b) => Some(b.get * a.get) }  }
 
-    val result = ParallelExecuteVisitor(flow,
+    val result = flow.executeParallel(
       source1 -> 3,
       source2 -> "foo")
 
@@ -115,7 +115,7 @@ class ParallelExecuteVisitorTest extends UnitSpec {
       (i, s, j) => (i |@| s |@| j) { case (a, b, c) => Some(b.get * (a.get + c.get))}
     }
 
-    val result = ParallelExecuteVisitor(flow,
+    val result = flow.executeParallel(
       source1 -> 3,
       source2 -> "foo")
 

@@ -138,10 +138,3 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     state.get(step).get.result
   }
 }
-
-object
-ParallelExecuteVisitor {
-  def apply[O](step: OptionStep[O], input: (OptionStep[_], Any)*) = {
-    new ParallelExecuteVisitor().execute(step, input:_*)
-  }
-}

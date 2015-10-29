@@ -3,6 +3,7 @@ package com.benoitlouy.workflow.executor
 import com.benoitlouy.workflow.step._
 import com.benoitlouy.workflow.step.StepIOOperators._
 import com.benoitlouy.test.UnitSpec
+import com.benoitlouy.workflow.executor.ExecutorOperators._
 import StepOperators._
 import scalaz._
 import Scalaz._
@@ -12,7 +13,7 @@ class ExecuteVisitorTest extends UnitSpec {
   "An ExecuteVisitor" should "return input when executing SourceStep" in {
     val source = SourceStep[Int]()
 
-    val result = ExecuteVisitor(source, source -> 1)
+    val result = source.execute(source -> 1)
 
     result shouldBe Success(Some(1))
   }
@@ -20,7 +21,7 @@ class ExecuteVisitorTest extends UnitSpec {
   it should "return a failure when executing SourceStep and input is missing" in {
     val source = SourceStep[Int]()
 
-    val result = ExecuteVisitor(source)
+    val result = source.execute()
 
     result shouldBe failure
   }
@@ -30,7 +31,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val flow = source |> { _ mMap { _.toString } }
 
-    val result = ExecuteVisitor(flow, source -> 1)
+    val result = flow.execute(source -> 1)
 
     result shouldBe Success(Some("1"))
   }
@@ -42,7 +43,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val flow = source |> { f }
 
-    val result = ExecuteVisitor(flow)
+    val result = flow.execute()
 
     result shouldBe failure
 
@@ -56,7 +57,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val flow: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error") }
 
-    val result = ExecuteVisitor(flow, source -> 1)
+    val result = flow.execute(source -> 1)
 
     result shouldBe failure
 
@@ -70,7 +71,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val flow = source |> { x => new RuntimeException("error").failure[String] }
 
-    val result = ExecuteVisitor(flow, source -> 1)
+    val result = flow.execute(source -> 1)
 
     result shouldBe failure
 
@@ -86,7 +87,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val flow = source |> { inc } |> { inc } |> { inc }
 
-    val result = ExecuteVisitor(flow, source -> 1)
+    val result = flow.execute(source -> 1)
 
     result shouldBe Success(Some(4))
   }
@@ -97,7 +98,7 @@ class ExecuteVisitorTest extends UnitSpec {
 
     val flow = (source1, source2) |> { (i, s) =>  (i |@| s) { case (a, b) => Some(b.get * a.get) }  }
 
-    val result = ExecuteVisitor(flow,
+    val result = flow.execute(
       source1 -> 3,
       source2 -> "foo")
 
@@ -113,7 +114,7 @@ class ExecuteVisitorTest extends UnitSpec {
       (i, s, j) => (i |@| s |@| j) { case (a, b, c) => Some(b.get * (a.get + c.get))}
     }
 
-    val result = ExecuteVisitor(flow,
+    val result = flow.execute(
       source1 -> 3,
       source2 -> "foo")
 
@@ -127,7 +128,7 @@ class ExecuteVisitorTest extends UnitSpec {
     val branch = source |> { _ mMap { x => count += 1; count } }
     val flow = (branch, branch) |> { (a, b) => (a |@| b) { case (x, y) => Some((x.get, y.get) )}}
 
-    val result = ExecuteVisitor(flow, source -> 1)
+    val result = flow.execute(source -> 1)
 
     result shouldBe Success(Some((1, 1)))
   }

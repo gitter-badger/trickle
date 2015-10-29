@@ -84,9 +84,3 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
   }
 
 }
-
-object ExecuteVisitor {
-  def apply[O](step: OptionStep[O], input: (OptionStep[_], Any)*) = {
-    new ExecuteVisitor().execute(step, input:_*)
-  }
-}
