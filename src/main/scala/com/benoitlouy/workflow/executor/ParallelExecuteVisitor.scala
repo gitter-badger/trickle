@@ -1,5 +1,7 @@
 package com.benoitlouy.workflow.executor
 
+import java.util.concurrent.Executors
+
 import com.benoitlouy.workflow.{Visitor, ConcurrentHMap}
 import com.benoitlouy.workflow.step._
 import com.benoitlouy.workflow.step.StepIOOperators._
@@ -50,6 +52,9 @@ class State(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) {
 }
 
 class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
+
+  implicit val executor = Executors.newCachedThreadPool()
+
   override def visit[O](step: SourceStep[O], state: stateType): stateType = {
     state.processStep(step) {
       state.get(step) match  {
