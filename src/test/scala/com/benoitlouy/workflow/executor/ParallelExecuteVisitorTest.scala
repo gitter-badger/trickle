@@ -8,9 +8,9 @@ import shapeless.syntax.std.tuple._
 
 import scalaz.{Failure, NonEmptyList, Success}
 
-class ParallelExecuteVisitorTest extends  ExecutorSpec {
+class ParallelExecuteVisitorTest extends  ExecutorSpec[ParallelState] {
 
-  override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = step.executeParallel(input:_*)
+  override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], ParallelState) = step.executeParallel(input:_*)
 
   it should "not starve for thread" in {
     val source1 = SourceStep[Int]()
@@ -37,23 +37,18 @@ class ParallelExecuteVisitorTest extends  ExecutorSpec {
 
     val cond: StepIO[Int] => StepIO[OptionStep[Int]] = { x: StepIO[Int] =>
       x mMap { y =>
-        if (y < 0)
-          throw new RuntimeException("cannot process negative input")
-        else
-          if (y == 0)
-          source1
-        else
-          source2
+        if (y < 0) throw new RuntimeException("cannot process negative input")
+        if (y == 0) source1 else source2
       }
     }
 
     val flow = new JunctionStep(switch, cond)
 
-    flow.executeParallel(switch -> None, source1 -> 1, source2 -> 2) shouldBe Success(None)
-    flow.executeParallel(switch -> 0, source1 -> 1, source2 -> 2) shouldBe Success(Some(1))
-    flow.executeParallel(switch -> 42, source1 -> 1, source2 -> 2) shouldBe Success(Some(2))
-    val Failure(NonEmptyList(e)) = flow.executeParallel(switch -> -1, source1 -> 1, source2 -> 2)
+    flow.executeParallel(switch -> None, source1 -> 1, source2 -> 2)._1 shouldBe Success(None)
+    flow.executeParallel(switch -> 0, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(1))
+    flow.executeParallel(switch -> 42, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(2))
+    val (Failure(NonEmptyList(e)), state) = flow.executeParallel(switch -> -1, source1 -> 1, source2 -> 2)
     e.getMessage shouldBe "cannot process negative input"
-
+    flow.executeParallel(source1 ->1, source2 -> 2)._1 shouldBe Failure(NonEmptyList(InputMissingException("missing input")))
   }
 }

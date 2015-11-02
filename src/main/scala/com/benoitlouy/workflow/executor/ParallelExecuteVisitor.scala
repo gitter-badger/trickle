@@ -14,7 +14,7 @@ import scalaz.concurrent.Task
 
 import scala.concurrent.blocking
 
-class State(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) {
+class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[ParallelState] {
 
   private object lockPoolFactory extends BaseKeyedPooledObjectFactory[OutputStep[_], Any] {
     override def wrap(value: Any): PooledObject[Any] = new DefaultPooledObject[Any](value)
@@ -29,17 +29,17 @@ class State(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) {
 
   def get[O](k: OptionStep[O]): Option[StepResult[O]] = content.get(k)
 
-  def +=[O](kv: (OptionStep[O], StepResult[O])): State = {
+  def +=[O](kv: (OptionStep[O], StepResult[O])): ParallelState = {
     content += kv
     this
   }
 
-  def ++=(other: State): State = {
+  def ++=(other: ParallelState): ParallelState = {
     content ++= other.content
     this
   }
 
-  def processStep[O](step: OptionStep[O])(f: => State): State = {
+  def processStep[O](step: OptionStep[O])(f: => ParallelState): ParallelState = {
     val lock = lockPool.borrowObject(step)
     try {
       get(step) match {
@@ -52,7 +52,7 @@ class State(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) {
   }
 }
 
-class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
+class ParallelExecuteVisitor extends Visitor[ParallelState] with Executor[ParallelState] { self =>
 
   implicit val executor = Executors.newCachedThreadPool()
 
@@ -154,7 +154,6 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
 
   override def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O](step: Apply22Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O], state: stateType): stateType = processParallel(step, state)
 
-
   override def visit[I, O](step: JunctionStep[I, O], state: stateType): stateType = {
     state.processStep(step) {
       val newState = step.parent.accept(this, state)
@@ -171,14 +170,14 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     }
   }
 
-  def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
-    val m = Map(input:_*) mapValues { x => x match {
+  def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], ParallelState) = {
+    val m = Map(input:_*) mapValues {
       case None => StepResult(None.successIO)
       case Some(e) => StepResult(e.successIO)
       case e => StepResult(e.successIO)
-    }}
-    val inputState = new State(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
+    }
+    val inputState = new ParallelState(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
     val state = step.accept(this, inputState)
-    state.get(step).get.result
+    (state.get(step).get.result, state)
   }
 }

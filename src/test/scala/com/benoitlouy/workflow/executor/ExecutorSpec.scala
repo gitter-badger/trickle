@@ -10,14 +10,14 @@ import shapeless.syntax.std.tuple._
 import scalaz.{NonEmptyList, Failure, Success, Validation}
 import scalaz.syntax.apply._
 
-trait ExecutorSpec extends UnitSpec {
+trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
 
-  def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O]
+  def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], S)
 
   "An Executor" should "return input when executing SourceStep" in {
     val source = SourceStep[Int]()
 
-    val result = execute(source, source -> 1)
+    val (result, state) = execute(source, source -> 1)
 
     result shouldBe Success(Some(1))
   }
@@ -25,7 +25,7 @@ trait ExecutorSpec extends UnitSpec {
   it should "return a failure when executing SourceStep and input is missing" in {
     val source = SourceStep[Int]()
 
-    val result = execute(source)
+    val (result, state) = execute(source)
 
     result shouldBe failure
   }
@@ -35,7 +35,7 @@ trait ExecutorSpec extends UnitSpec {
 
     val flow = source |> { _ mMap { _.toString } }
 
-    val result = execute(flow, source -> 1)
+    val (result, state) = execute(flow, source -> 1)
 
     result shouldBe Success(Some("1"))
   }
@@ -47,7 +47,7 @@ trait ExecutorSpec extends UnitSpec {
 
     val flow = source |> { f }
 
-    val result = execute(flow)
+    val (result, state) = execute(flow)
 
     result shouldBe failure
 
@@ -61,7 +61,7 @@ trait ExecutorSpec extends UnitSpec {
 
     val flow: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error") }
 
-    val result = execute(flow, source -> 1)
+    val (result, state) = execute(flow, source -> 1)
 
     result shouldBe failure
 
@@ -75,7 +75,7 @@ trait ExecutorSpec extends UnitSpec {
 
     val flow = source |> { x => new RuntimeException("error").failureIO[String] }
 
-    val result = execute(flow, source -> 1)
+    val (result, state) = execute(flow, source -> 1)
 
     result shouldBe failure
 
@@ -91,7 +91,7 @@ trait ExecutorSpec extends UnitSpec {
 
     val flow = source |> { inc } |> { inc } |> { inc }
 
-    val result = execute(flow, source -> 1)
+    val (result, state) = execute(flow, source -> 1)
 
     result shouldBe Success(Some(4))
   }
@@ -102,7 +102,7 @@ trait ExecutorSpec extends UnitSpec {
 
     val flow = (source1, source2) |> { (i, s) =>  (i |@| s) { case (a, b) => Some(b.get * a.get) }  }
 
-    val result = execute(flow, source1 -> 3, source2 -> "foo")
+    val (result, state) = execute(flow, source1 -> 3, source2 -> "foo")
 
     result shouldBe Success(Some("foo" * 3))
   }
@@ -117,7 +117,7 @@ trait ExecutorSpec extends UnitSpec {
       (i, s, j) => (i |@| s |@| j) { case (a, b, c) => Some(b.get * (a.get + c.get))}
     }
 
-    val result = execute(flow, source1 -> 3, source2 -> "foo")
+    val (result, state) = execute(flow, source1 -> 3, source2 -> "foo")
 
     result shouldBe Success(Some("foo" * 18))
   }
@@ -129,7 +129,7 @@ trait ExecutorSpec extends UnitSpec {
     val branch = source |> { _ mMap { x => count += 1; count } }
     val flow = (branch, branch) |> { (a, b) => (a |@| b) { case (a, b) => Some((a.get, b.get) )}}
 
-    val result = execute(flow, source -> 1)
+    val (result, state) = execute(flow, source -> 1)
 
     result shouldBe Success(Some((1, 1)))
   }
@@ -143,7 +143,7 @@ trait ExecutorSpec extends UnitSpec {
 
     val flow = (b1, b2) |> { (b1, b2) => (b1 |@| b2) { case (a, b) => Some((a.get, b.get))}}
 
-    val result = execute(flow, source -> 1)
+    val (result, state) = execute(flow, source -> 1)
 
     result shouldBe Success(Some(("4", 6)))
   }
@@ -157,7 +157,7 @@ trait ExecutorSpec extends UnitSpec {
       (a |@| b) { case (a, b) => Some(a.get + b.get)}
     }
 
-    val result = execute(flow, source -> 42)
+    val (result, state) = execute(flow, source -> 42)
 
     val Failure(NonEmptyList(ex1, ex2)) = result
     ex1.getMessage shouldBe "error1"
@@ -209,7 +209,7 @@ trait ExecutorSpec extends UnitSpec {
     )
 
     for ((flow, i) <- flows.zipWithIndex) {
-      execute(flow, source -> 1) shouldBe Success(Some(i + 1))
+      execute(flow, source -> 1)._1 shouldBe Success(Some(i + 1))
     }
   }
 

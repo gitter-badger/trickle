@@ -6,14 +6,29 @@ import com.benoitlouy.workflow.step.StepIOOperators._
 import shapeless.ops.hlist._
 import shapeless._
 
-class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with Executor{ self =>
-
+class State(val content: HMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[State] {
   implicit object constraint extends (OptionStep ~?> StepResult)
 
+  override def get[O](step: OptionStep[O]): Option[StepResult[O]] = content.get(step)
+
+  override def processStep[O](step: OptionStep[O])(f: => State): State = content.get(step) match {
+    case None => f
+    case _ => this
+  }
+
+  def +[O](kv: (OptionStep[O], StepResult[O])): State = new State(content + kv)
+
+  def ++(other: State): State = new State(content ++ other.content)
+}
+
+class ExecuteVisitor extends Visitor[State] with Executor[State] { self =>
+
   override def visit[O](step: SourceStep[O], state: stateType): stateType = {
-    get(state, step) match {
-      case None => put(state, step, StepResult(InputMissingException("missing input").failureIO[O]))
-      case _ => state
+    state.processStep(step) {
+      state.get(step) match {
+        case None => state +(step, StepResult(InputMissingException("missing input").failureIO[O]))
+        case _ => state
+      }
     }
   }
 
@@ -23,24 +38,17 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
 
   object getResults extends Poly2 {
     implicit def case1[O, T <: HList] = at[OptionStep[O], (T, stateType)] {
-      case (step, (acc, state)) => (get(state, step).get.result :: acc, state)
+      case (step, (acc, state)) => (state.get(step).get.result :: acc, state)
     }
   }
 
   def process[T <: HList, I <: HList, P <: I, O](step: ApplyStep[T, I, O], state: stateType)
                                                 (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
                                                 rightFolder: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, (P, stateType)]) = {
-    ifNotInState(state, step) {
+    state.processStep(step) {
       val newState = step.parents.foldLeft(state)(visitParents)
       val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
-      put(newState2, step, applySafe(step.f, input))
-    }
-  }
-
-  def ifNotInState[O](state: stateType, step: OptionStep[O])(f: => stateType): stateType = {
-    get(state, step) match {
-      case None => f
-      case _ => state
+      newState2 + (step, applySafe(step.f, input))
     }
   }
 
@@ -99,16 +107,9 @@ class ExecuteVisitor extends Visitor[HMap[(OptionStep ~?> StepResult)#λ]] with 
     }
   }
 
-  def put[O](state: HMap[~?>[OptionStep, StepResult]#λ], step: OptionStep[O], stepResult: StepResult[O]) = {
-    state + (step, stepResult)
-  }
-
-  def get[O](state: stateType, step: OptionStep[O]): Option[StepResult[O]] = state.get(step)
-
-  override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
+  override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], State) = {
     val m = Map(input:_*) mapValues { x => StepResult(x.successIO) }
-    val state = step.accept(this, new HMap[(OptionStep ~?> StepResult)#λ](m.asInstanceOf[Map[Any, Any]]))
-    get(state, step).get.result
+    val state = step.accept(this, new State(new HMap[(OptionStep ~?> StepResult)#λ](m.asInstanceOf[Map[Any, Any]])))
+    (state.get(step).get.result, state)
   }
-
 }
