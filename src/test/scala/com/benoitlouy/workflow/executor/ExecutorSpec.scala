@@ -7,7 +7,7 @@ import com.benoitlouy.workflow.step._
 import shapeless.Poly2
 import shapeless.syntax.std.tuple._
 
-import scalaz.{NonEmptyList, Failure, Success}
+import scalaz.{NonEmptyList, Failure, Success, Validation}
 import scalaz.syntax.apply._
 
 trait ExecutorSpec extends UnitSpec {

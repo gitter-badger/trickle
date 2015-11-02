@@ -9,6 +9,7 @@ import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 import shapeless._
 import shapeless.ops.hlist._
+import scalaz.{Failure, Success}
 import scalaz.concurrent.Task
 
 import scala.concurrent.blocking
@@ -80,7 +81,7 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
     state.processStep(step) {
       val newState = step.parents.foldLeft(state)(visitParents)
       val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
-      newState2 += (step, applySafe(step.f, input))
+      newState2 += (step, StepResult(applySafe(step.f, input)))
     }
   }
 
@@ -97,15 +98,15 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
       val (tasks, newState) = step.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsParallel)
       Task.gatherUnordered(tasks).run
       val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
-      newState2 += (step, applySafe(step.f, input))
+      newState2 += (step, StepResult(applySafe(step.f, input)))
     }
   }
 
   def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
     try {
-      StepResult(mapper(e))
+      mapper(e)
     } catch {
-      case e: Exception => StepResult(e.failureIO[O])
+      case e: Exception => e.failureIO[O]
     }
   }
 
@@ -153,8 +154,29 @@ class ParallelExecuteVisitor extends Visitor[State] with Executor { self =>
 
   override def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O](step: Apply22Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O], state: stateType): stateType = processParallel(step, state)
 
+
+  override def visit[I, O](step: JunctionStep[I, O], state: stateType): stateType = {
+    state.processStep(step) {
+      val newState = step.parent.accept(this, state)
+      val input = newState.get(step.parent).get.result
+      val branch = applySafe(step.f, input)
+      branch match {
+        case Success(Some(s)) => {
+          val newNewState = s.accept(this, newState)
+          newNewState += (step, newNewState.get(s).get)
+        }
+        case Success(None) => newState += (step, StepResult(None.successIO))
+        case Failure(nel) => newState += (step, StepResult(Failure(nel)))
+      }
+    }
+  }
+
   def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = {
-    val m = Map(input:_*) mapValues { x => StepResult(x.successIO) }
+    val m = Map(input:_*) mapValues { x => x match {
+      case None => StepResult(None.successIO)
+      case Some(e) => StepResult(e.successIO)
+      case e => StepResult(e.successIO)
+    }}
     val inputState = new State(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
     val state = step.accept(this, inputState)
     state.get(step).get.result

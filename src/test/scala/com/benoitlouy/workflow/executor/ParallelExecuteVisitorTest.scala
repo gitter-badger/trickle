@@ -6,6 +6,8 @@ import StepOperators._
 import StepIOOperators._
 import shapeless.syntax.std.tuple._
 
+import scalaz.{Failure, NonEmptyList, Success}
+
 class ParallelExecuteVisitorTest extends  ExecutorSpec {
 
   override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): StepIO[O] = step.executeParallel(input:_*)
@@ -24,5 +26,34 @@ class ParallelExecuteVisitorTest extends  ExecutorSpec {
     val m2 = (m1, b1, b2) |> { (m1,b1,b2) => (m1,b1,b2).foldLeft(0.successIO)(sum) }
     val m3 = (m1, b1, b2) |> { (m1,b1,b2) => (m1,b1,b2).foldLeft(0.successIO)(sum) }
     val m4 = (m2, m1, m3, b1, b2) |> { (m2,m1,m3,b1,b2) => (m2,m1,m3,b1,b2).foldLeft(0.successIO)(sum) }
+
+    m4.executeParallel(source1 -> 1)
+  }
+
+  it should "execute conditional branching" in {
+    val switch = SourceStep[Int]()
+    val source1 = SourceStep[Int]()
+    val source2 = SourceStep[Int]()
+
+    val cond: StepIO[Int] => StepIO[OptionStep[Int]] = { x: StepIO[Int] =>
+      x mMap { y =>
+        if (y < 0)
+          throw new RuntimeException("cannot process negative input")
+        else
+          if (y == 0)
+          source1
+        else
+          source2
+      }
+    }
+
+    val flow = new JunctionStep(switch, cond)
+
+    flow.executeParallel(switch -> None, source1 -> 1, source2 -> 2) shouldBe Success(None)
+    flow.executeParallel(switch -> 0, source1 -> 1, source2 -> 2) shouldBe Success(Some(1))
+    flow.executeParallel(switch -> 42, source1 -> 1, source2 -> 2) shouldBe Success(Some(2))
+    val Failure(NonEmptyList(e)) = flow.executeParallel(switch -> -1, source1 -> 1, source2 -> 2)
+    e.getMessage shouldBe "cannot process negative input"
+
   }
 }
