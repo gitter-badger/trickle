@@ -218,21 +218,17 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     val source1 = SourceStep[Int]()
     val source2 = SourceStep[Int]()
 
-    val cond: StepIO[Int] => StepIO[OptionStep[Int]] = { x: StepIO[Int] =>
-      x mMap { y =>
-        if (y < 0) throw new RuntimeException("cannot process negative input")
-        if (y == 0) source1 else source2
-      }
-    }
-
-    val flow = switch |< cond
+    val flow = switch |< { _ mMap[OptionStep[Int]] { y =>
+      if (y < 0) throw new RuntimeException("cannot process negative input")
+      if (y == 0) source1 else source2
+    }} |> { _ mMap { _ + 1} }
 
     execute(flow, switch -> None, source1 -> 1, source2 -> 2)._1 shouldBe Success(None)
-    execute(flow, switch -> 0, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(1))
-    execute(flow, switch -> 42, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(2))
+    execute(flow, switch -> 0, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(2))
+    execute(flow, switch -> 42, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(3))
     val (Failure(NonEmptyList(e)), state) = execute(flow, switch -> -1, source1 -> 1, source2 -> 2)
     e.getMessage shouldBe "cannot process negative input"
-    execute(flow, source1 ->1, source2 -> 2)._1 shouldBe Failure(NonEmptyList(InputMissingException("missing input")))
+    execute(flow, source1 -> 1, source2 -> 2)._1 shouldBe Failure(NonEmptyList(InputMissingException("missing input")))
   }
 
 }

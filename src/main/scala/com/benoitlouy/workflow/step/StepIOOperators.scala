@@ -15,7 +15,7 @@ class StepIOSuccessOptionOps[A](self: Option[A]) {
 }
 
 class StepIOOperators[A](self: StepIO[A]) {
-  def mMap[B](f: A => B): StepIO[B] = self map { _ map f }
+  def mMap[B](f: A => B): StepIO[B] = self map { inner: Option[A] => inner map f }
 }
 
 object StepIOOperators {
