@@ -8,11 +8,6 @@ import com.benoitlouy.workflow.step.StepIOOperators._
 import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 import shapeless._
-import shapeless.ops.hlist._
-import scalaz.{Failure, Success}
-import scalaz.concurrent.Task
-
-import scala.concurrent.blocking
 
 class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[ParallelState] {
 
@@ -29,12 +24,14 @@ class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ])
 
   def get[O](k: OptionStep[O]): Option[StepResult[O]] = content.get(k)
 
-  def +=[O](kv: (OptionStep[O], StepResult[O])): ParallelState = {
-    content += kv
+
+
+  override def put[O](step: OptionStep[O], stepResult: StepResult[O]): ParallelState = {
+    content += (step, stepResult)
     this
   }
 
-  def ++=(other: ParallelState): ParallelState = {
+  override def putAll(other: ParallelState): ParallelState = {
     content ++= other.content
     this
   }
@@ -52,63 +49,9 @@ class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ])
   }
 }
 
-class ParallelExecuteVisitor extends Visitor[ParallelState] with Executor[ParallelState] { self =>
+class ParallelExecuteVisitor extends ParallelExecution[ParallelState] with Visitor[ParallelState] with Executor[ParallelState] { self =>
 
   implicit val executor = Executors.newCachedThreadPool()
-
-  override def visit[O](step: SourceStep[O], state: stateType): stateType = {
-    state.processStep(step) {
-      state.get(step) match  {
-        case None => state += (step, StepResult(InputMissingException("missing input").failureIO[O]))
-        case _ => state
-      }
-    }
-  }
-
-  object visitParents extends Poly {
-    implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state ++= step.accept(self, state))
-  }
-
-  object getResults extends Poly2 {
-    implicit def case1[O, T <: HList] = at[OptionStep[O], (T, stateType)] {
-      case (step, (acc, state)) => (state.get(step).get.result :: acc, state)
-    }
-  }
-
-  def process[T <: HList, I <: HList, P <: I, O](step: ApplyStep[T, I, O], state: stateType)
-                                                (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
-                                                rightFolder: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, (P, stateType)]) = {
-    state.processStep(step) {
-      val newState = step.parents.foldLeft(state)(visitParents)
-      val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
-      newState2 += (step, StepResult(applySafe(step.f, input)))
-    }
-  }
-
-  object visitParentsParallel extends Poly2 {
-    implicit def case1[O] = at[OptionStep[O], (List[Task[stateType]], stateType)] {
-      case (step, (tasks, state)) => ( tasks :+ Task { blocking { state ++= step.accept(self, state) }}, state)
-    }
-  }
-
-  def processParallel[T <: HList, I <: HList, P <: I, O](step: ApplyStep[T, I, O], state: stateType)
-                                                        (implicit rightFolder: RightFolder.Aux[T, (List[Task[stateType]], stateType), visitParentsParallel.type, (List[Task[stateType]], stateType)],
-                                                         rightFolder2: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, (P, stateType)]) = {
-    state.processStep(step) {
-      val (tasks, newState) = step.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsParallel)
-      Task.gatherUnordered(tasks).run
-      val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
-      newState2 += (step, StepResult(applySafe(step.f, input)))
-    }
-  }
-
-  def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
-    try {
-      mapper(e)
-    } catch {
-      case e: Exception => e.failureIO[O]
-    }
-  }
 
   override def visit[I, O](step: Apply1Step[I, O], state: stateType): stateType = process(step, state)
 
@@ -153,22 +96,6 @@ class ParallelExecuteVisitor extends Visitor[ParallelState] with Executor[Parall
   override def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, O](step: Apply21Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, O], state: stateType): stateType = processParallel(step, state)
 
   override def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O](step: Apply22Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O], state: stateType): stateType = processParallel(step, state)
-
-  override def visit[I, O](step: JunctionStep[I, O], state: stateType): stateType = {
-    state.processStep(step) {
-      val newState = step.parent.accept(this, state)
-      val input = newState.get(step.parent).get.result
-      val branch = applySafe(step.f, input)
-      branch match {
-        case Success(Some(s)) => {
-          val newNewState = s.accept(this, newState)
-          newNewState += (step, newNewState.get(s).get)
-        }
-        case Success(None) => newState += (step, StepResult(None.successIO))
-        case Failure(nel) => newState += (step, StepResult(Failure(nel)))
-      }
-    }
-  }
 
   def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], ParallelState) = {
     val m = Map(input:_*) mapValues {

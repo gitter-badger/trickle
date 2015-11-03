@@ -3,7 +3,6 @@ package com.benoitlouy.workflow.executor
 import com.benoitlouy.workflow.{Visitor, HMap}
 import com.benoitlouy.workflow.step._
 import com.benoitlouy.workflow.step.StepIOOperators._
-import shapeless.ops.hlist._
 import shapeless._
 
 class State(val content: HMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[State] {
@@ -11,46 +10,17 @@ class State(val content: HMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorS
 
   override def get[O](step: OptionStep[O]): Option[StepResult[O]] = content.get(step)
 
+  override def put[O](step: OptionStep[O], stepResult: StepResult[O]): State = new State(content + (step, stepResult))
+
+  override def putAll(other: State): State = new State(content ++ other.content)
+
   override def processStep[O](step: OptionStep[O])(f: => State): State = content.get(step) match {
     case None => f
     case _ => this
   }
-
-  def +[O](kv: (OptionStep[O], StepResult[O])): State = new State(content + kv)
-
-  def ++(other: State): State = new State(content ++ other.content)
 }
 
-class ExecuteVisitor extends Visitor[State] with Executor[State] { self =>
-
-  override def visit[O](step: SourceStep[O], state: stateType): stateType = {
-    state.processStep(step) {
-      state.get(step) match {
-        case None => state +(step, StepResult(InputMissingException("missing input").failureIO[O]))
-        case _ => state
-      }
-    }
-  }
-
-  object visitParents extends Poly {
-    implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state ++ step.accept(self, state))
-  }
-
-  object getResults extends Poly2 {
-    implicit def case1[O, T <: HList] = at[OptionStep[O], (T, stateType)] {
-      case (step, (acc, state)) => (state.get(step).get.result :: acc, state)
-    }
-  }
-
-  def process[T <: HList, I <: HList, P <: I, O](step: ApplyStep[T, I, O], state: stateType)
-                                                (implicit leftFolder: LeftFolder.Aux[T, stateType, visitParents.type, stateType],
-                                                rightFolder: RightFolder.Aux[T, (HNil.type, stateType), getResults.type, (P, stateType)]) = {
-    state.processStep(step) {
-      val newState = step.parents.foldLeft(state)(visitParents)
-      val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
-      newState2 + (step, applySafe(step.f, input))
-    }
-  }
+class ExecuteVisitor extends SingleThreadedExecution[State] with Visitor[State] with Executor[State] { self =>
 
   override def visit[I, O](step: Apply1Step[I, O], state: stateType): stateType = process(step, state)
 
@@ -96,19 +66,12 @@ class ExecuteVisitor extends Visitor[State] with Executor[State] { self =>
 
   override def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O](step: Apply22Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O], state: stateType): stateType = process(step, state)
 
-
-  override def visit[I, O](step: JunctionStep[I, O], state: stateType): stateType = state
-
-  def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
-    try {
-      StepResult(mapper(e))
-    } catch {
-      case e: Exception => StepResult(e.failureIO[O])
-    }
-  }
-
   override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], State) = {
-    val m = Map(input:_*) mapValues { x => StepResult(x.successIO) }
+    val m = Map(input:_*) mapValues {
+      case None => StepResult(None.successIO)
+      case Some(e) => StepResult(e.successIO)
+      case e => StepResult(e.successIO)
+    }
     val state = step.accept(this, new State(new HMap[(OptionStep ~?> StepResult)#λ](m.asInstanceOf[Map[Any, Any]])))
     (state.get(step).get.result, state)
   }
