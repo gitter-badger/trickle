@@ -225,7 +225,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
       }
     }
 
-    val flow = new JunctionStep(switch, cond)
+    val flow = switch |< cond
 
     execute(flow, switch -> None, source1 -> 1, source2 -> 2)._1 shouldBe Success(None)
     execute(flow, switch -> 0, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(1))

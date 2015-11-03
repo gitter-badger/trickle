@@ -49,7 +49,7 @@ class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ])
   }
 }
 
-class ParallelExecuteVisitor extends ParallelExecution[ParallelState] with Visitor[ParallelState] with Executor[ParallelState] { self =>
+class ParallelExecuteVisitor extends ParallelExecutionUtils[ParallelState] with Visitor[ParallelState] with Executor[ParallelState] { self =>
 
   implicit val executor = Executors.newCachedThreadPool()
 

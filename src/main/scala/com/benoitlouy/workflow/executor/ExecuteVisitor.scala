@@ -20,7 +20,7 @@ class State(val content: HMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorS
   }
 }
 
-class ExecuteVisitor extends SingleThreadedExecution[State] with Visitor[State] with Executor[State] { self =>
+class ExecuteVisitor extends ExecutionUtils[State] with Visitor[State] with Executor[State] { self =>
 
   override def visit[I, O](step: Apply1Step[I, O], state: stateType): stateType = process(step, state)
 

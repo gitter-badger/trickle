@@ -90,5 +90,7 @@ object StepOperators {
     def |>[O](f: (StepIO[I1], StepIO[I2], StepIO[I3], StepIO[I4], StepIO[I5], StepIO[I6], StepIO[I7], StepIO[I8], StepIO[I9], StepIO[I10], StepIO[I11], StepIO[I12], StepIO[I13], StepIO[I14], StepIO[I15], StepIO[I16], StepIO[I17], StepIO[I18], StepIO[I19], StepIO[I20], StepIO[I21], StepIO[I22]) => StepIO[O]) = new Apply22Step(parents, f)
   }
 
-//  implicit class JunctionOperatorConverter[I, O]()
+  implicit class JunctionOperatorConverter[I, O](val parent: OptionStep[I]) {
+    def |<[O](f: StepIO[I] => StepIO[OptionStep[O]]) = new JunctionStep(parent, f)
+  }
 }
