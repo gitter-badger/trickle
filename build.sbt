@@ -33,7 +33,7 @@ lazy val core = project.in(file("core"))
   ))
 
 
-lazy val workflowSettings = buildSettings ++ commonSettings ++ scoverageSettings
+lazy val workflowSettings = buildSettings ++ commonSettings ++ scoverageSettings ++ sharedPublishSettings
 
 lazy val commonSettings = Seq(
   scalacOptions ++= commonScalacOptions
