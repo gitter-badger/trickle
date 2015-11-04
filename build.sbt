@@ -58,3 +58,18 @@ lazy val commonScalacOptions = Seq(
 )
 
 
+lazy val sharedPublishSettings = Seq(
+//  releaseCrossBuild := true,
+//  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+  publishMavenStyle := true,
+  publishArtifact in Test := false,
+  pomIncludeRepository := Function.const(false),
+  publishTo := {
+    val repoBase = "s3://maven.benoitlouy.com/"
+    val nexus = "https://oss.sonatype.org/"
+    if (isSnapshot.value)
+      Some("Snapshots" at repoBase + "snapshots")
+    else
+      Some("Releases" at repoBase + "releases")
+  }
+)
