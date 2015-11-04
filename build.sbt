@@ -2,6 +2,7 @@ import scoverage.ScoverageKeys
 
 enablePlugins(GitVersioning, GitBranchPrompt)
 
+git.baseVersion := "0.1.0"
 lazy val buildSettings = Seq(
   organization := "com.benoitlouy",
   scalaVersion := "2.11.7",
