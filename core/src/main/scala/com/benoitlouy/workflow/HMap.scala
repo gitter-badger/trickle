@@ -15,10 +15,8 @@ class HMap[R[_, _]](val underlying: collection.Map[Any, Any] = Map.empty) extend
 }
 
 object HMap {
-  def apply[R[_, _]] = new HMapBuilder[R]
-
-  def empty[R[_, _]] = new HMap[R]
-  def empty[R[_, _]](underlying: Map[Any, Any]) = new HMap[R](underlying)
+  def empty[R[_, _]]: HMap[R] = new HMap[R]
+  def empty[R[_, _]](underlying: Map[Any, Any]): HMap[R] = new HMap[R](underlying)
 }
 
 

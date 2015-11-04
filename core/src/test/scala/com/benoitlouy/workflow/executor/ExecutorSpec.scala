@@ -226,7 +226,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     execute(flow, switch -> None, source1 -> 1, source2 -> 2)._1 shouldBe Success(None)
     execute(flow, switch -> 0, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(2))
     execute(flow, switch -> 42, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(3))
-    val (Failure(NonEmptyList(e)), state) = execute(flow, switch -> -1, source1 -> 1, source2 -> 2)
+    val (Failure(NonEmptyList(e)), _) = execute(flow, switch -> -1, source1 -> 1, source2 -> 2)
     e.getMessage shouldBe "cannot process negative input"
     execute(flow, source1 -> 1, source2 -> 2)._1 shouldBe Failure(NonEmptyList(InputMissingException("missing input")))
   }

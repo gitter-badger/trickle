@@ -21,6 +21,6 @@ class ConcurrentHMap[R[_, _]](init: Map[Any, Any] = Map.empty) extends HMap[R](u
 }
 
 object ConcurrentHMap {
-  def empty[R[_, _]] = new ConcurrentHMap[R]
-  def empty[R[_, _]](underlying: Map[Any, Any]) = new ConcurrentHMap[R](underlying)
+  def empty[R[_, _]]: ConcurrentHMap[R] = new ConcurrentHMap[R]
+  def empty[R[_, _]](underlying: Map[Any, Any]): ConcurrentHMap[R] = new ConcurrentHMap[R](underlying)
 }
