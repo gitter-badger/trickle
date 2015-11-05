@@ -1,4 +1,5 @@
 import scoverage.ScoverageKeys
+import ReleaseTransformations._
 
 enablePlugins(GitVersioning, GitBranchPrompt)
 
@@ -60,6 +61,21 @@ lazy val commonScalacOptions = Seq(
 )
 
 lazy val publishSettings = Seq(
+  homepage := Some(url("https://github.com/benoitlouy/trickle")),
+  licenses := Seq("MIT" -> url("http://opensource.org/licenses/MIT")),
+  scmInfo := Some(ScmInfo(url("https://github.com/benoitlouy/trickle"), "scm:git:git@github.com:benoitlouy/trickle.git")),
+  autoAPIMappings := true,
+  pomExtra := (
+    <developers>
+      <developer>
+        <name>Benoit Louy</name>
+        <url>http://github.com/benoitlouy/</url>
+      </developer>
+    </developers>
+    )
+) ++ credentialSettings ++ sharedPublishSettings ++ sharedReleaseProcess
+
+lazy val sharedPublishSettings = Seq(
   publishMavenStyle := true,
   publishTo := {
     val nexus = "https://my.artifact.repo.net/"
@@ -68,6 +84,30 @@ lazy val publishSettings = Seq(
     else
       Some("releases"  at nexus + "service/local/staging/deploy/maven2")
   }
+)
+
+lazy val sharedReleaseProcess = Seq(
+  releaseProcess := Seq[ReleaseStep](
+    checkSnapshotDependencies,
+    inquireVersions,
+    runClean, // disabled to reduce memory usage during release
+    runTest,
+    setReleaseVersion,
+    commitReleaseVersion,
+    tagRelease,
+    publishArtifacts,
+    setNextVersion,
+    commitNextVersion,
+    ReleaseStep(action = Command.process("sonatypeReleaseAll", _)),
+    pushChanges)
+)
+
+lazy val credentialSettings = Seq(
+  // For Travis CI - see http://www.cakesolutions.net/teamblogs/publishing-artefacts-to-oss-sonatype-nexus-using-sbt-and-travis-ci
+  credentials ++= (for {
+    username <- Option(System.getenv().get("SONATYPE_USERNAME"))
+    password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
+  } yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)).toSeq
 )
 
 lazy val noPublishSettings = Seq(
