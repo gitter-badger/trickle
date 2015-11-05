@@ -6,12 +6,11 @@ enablePlugins(GitVersioning, GitBranchPrompt)
 git.baseVersion := "0.1.0"
 lazy val buildSettings = Seq(
   organization := "com.github.benoitlouy",
-  scalaVersion := "2.11.7",
-  crossScalaVersions := Seq("2.10.5", "2.11.7")
+  scalaVersion := "2.11.7"
 )
 
 lazy val scoverageSettings = Seq(
-  ScoverageKeys.coverageMinimum := 60,
+  ScoverageKeys.coverageMinimum := 90,
   ScoverageKeys.coverageFailOnMinimum := false,
   ScoverageKeys.coverageHighlighting := scalaBinaryVersion.value != "2.10"
 )
@@ -19,9 +18,8 @@ lazy val scoverageSettings = Seq(
 val scalazVersion = "7.1.4"
 
 lazy val trickle = project.in(file("."))
-  .settings(tricleSettings)
+  .settings(noPublishSettings)
   .aggregate(core)
-  .dependsOn(core)
 
 lazy val core = project.in(file("core"))
   .settings(moduleName := "trickle-core")
@@ -69,6 +67,7 @@ lazy val publishSettings = Seq(
   pomExtra := (
     <developers>
       <developer>
+        <id>benoitlouy</id>
         <name>Benoit Louy</name>
         <url>http://github.com/benoitlouy/</url>
       </developer>
@@ -78,29 +77,25 @@ lazy val publishSettings = Seq(
 
 lazy val sharedPublishSettings = Seq(
   publishMavenStyle := true,
-  publishTo := {
-    val nexus = "https://my.artifact.repo.net/"
-    if (isSnapshot.value)
-      Some("snapshots" at nexus + "content/repositories/snapshots")
-    else
-      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-  }
+  releaseCrossBuild := true
 )
 
 lazy val sharedReleaseProcess = Seq(
   releaseProcess := Seq[ReleaseStep](
     checkSnapshotDependencies,
     inquireVersions,
-    runClean, // disabled to reduce memory usage during release
+    runClean,
     runTest,
     setReleaseVersion,
     commitReleaseVersion,
     tagRelease,
-    publishArtifacts,
+//    publishArtifacts,
+    ReleaseStep(action = Command.process("publishSigned", _)),
     setNextVersion,
     commitNextVersion,
     ReleaseStep(action = Command.process("sonatypeReleaseAll", _)),
-    pushChanges)
+    pushChanges
+  )
 )
 
 lazy val credentialSettings = Seq(
@@ -116,3 +111,6 @@ lazy val noPublishSettings = Seq(
   publishLocal := (),
   publishArtifact := false
 )
+
+addCommandAlias("build", ";scalastyle;core/compile;coverage;core/test")
+addCommandAlias("gitSnapshots", ";set version in ThisBuild := git.gitDescribedVersion.value.get + \"-SNAPSHOT\"")
