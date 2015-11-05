@@ -17,7 +17,9 @@ lazy val scoverageSettings = Seq(
 
 val scalazVersion = "7.1.4"
 
-lazy val root = project.in(file(".")).aggregate(core)
+lazy val root = project.in(file("."))
+  .settings(noPublishSettings)
+  .aggregate(core)
 
 lazy val core = project.in(file("core"))
   .settings(moduleName := "trickle-core")
@@ -66,4 +68,10 @@ lazy val publishSettings = Seq(
     else
       Some("releases"  at nexus + "service/local/staging/deploy/maven2")
   }
+)
+
+lazy val noPublishSettings = Seq(
+  publish := (),
+  publishLocal := (),
+  publishArtifact := false
 )
