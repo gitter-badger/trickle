@@ -18,9 +18,10 @@ lazy val scoverageSettings = Seq(
 
 val scalazVersion = "7.1.4"
 
-lazy val root = project.in(file("."))
+lazy val trickle = project.in(file("."))
   .settings(noPublishSettings)
   .aggregate(core)
+  .dependsOn(core)
 
 lazy val core = project.in(file("core"))
   .settings(moduleName := "trickle-core")
