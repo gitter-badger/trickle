@@ -19,7 +19,7 @@ lazy val scoverageSettings = Seq(
 val scalazVersion = "7.1.4"
 
 lazy val trickle = project.in(file("."))
-  .settings(noPublishSettings)
+  .settings(tricleSettings)
   .aggregate(core)
   .dependsOn(core)
 
