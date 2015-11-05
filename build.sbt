@@ -21,7 +21,7 @@ lazy val root = project.in(file(".")).aggregate(core)
 
 lazy val core = project.in(file("core"))
   .settings(moduleName := "trickle-core")
-  .settings(workflowSettings)
+  .settings(tricleSettings)
   .settings(libraryDependencies ++= Seq(
     "org.scalaz" %% "scalaz-core" % scalazVersion,
     "org.scalaz" %% "scalaz-concurrent" % scalazVersion,
@@ -33,7 +33,7 @@ lazy val core = project.in(file("core"))
   ))
 
 
-lazy val workflowSettings = buildSettings ++ commonSettings ++ scoverageSettings
+lazy val tricleSettings = buildSettings ++ commonSettings ++ scoverageSettings
 
 lazy val commonSettings = Seq(
   scalacOptions ++= commonScalacOptions
@@ -55,4 +55,14 @@ lazy val commonScalacOptions = Seq(
   "-Ywarn-numeric-widen",
   "-Ywarn-value-discard",
   "-Xfuture"
+)
+
+lazy val publishSettings = Seq(
+  publishTo := {
+    val nexus = "https://my.artifact.repo.net/"
+    if (isSnapshot.value)
+      Some("snapshots" at nexus + "content/repositories/snapshots")
+    else
+      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+  }
 )
