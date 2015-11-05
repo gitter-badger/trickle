@@ -1,7 +1,7 @@
-package com.benoitlouy.workflow.executor
+package trickle.executor
 
-import com.benoitlouy.workflow.step._
-import com.benoitlouy.workflow.executor.ExecutorOperators._
+import trickle.step._
+import trickle.executor.ExecutorOperators._
 
 class ExecuteVisitorTest extends ExecutorSpec[State] {
 

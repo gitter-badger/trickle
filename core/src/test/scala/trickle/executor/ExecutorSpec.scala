@@ -1,9 +1,9 @@
-package com.benoitlouy.workflow.executor
+package trickle.executor
 
-import com.benoitlouy.workflow.step.StepIOOperators._
-import com.benoitlouy.workflow.step.StepOperators._
-import com.benoitlouy.test.UnitSpec
-import com.benoitlouy.workflow.step._
+import trickle.step.StepIOOperators._
+import trickle.step.StepOperators._
+import trickle.UnitSpec
+import trickle.step._
 import shapeless.Poly2
 import shapeless.syntax.std.tuple._
 

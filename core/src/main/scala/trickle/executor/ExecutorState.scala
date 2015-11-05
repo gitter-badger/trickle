@@ -1,6 +1,6 @@
-package com.benoitlouy.workflow.executor
+package trickle.executor
 
-import com.benoitlouy.workflow.step._
+import trickle.step._
 
 trait ExecutorState[S <: ExecutorState[S]] {
   def get[O](step: OptionStep[O]): Option[StepResult[O]]

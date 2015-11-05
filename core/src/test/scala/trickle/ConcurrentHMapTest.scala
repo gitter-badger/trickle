@@ -1,6 +1,5 @@
-package com.benoitlouy.workflow
+package trickle
 
-import com.benoitlouy.test.UnitSpec
 import shapeless.{~?>, Id}
 
 class ConcurrentHMapTest extends UnitSpec {

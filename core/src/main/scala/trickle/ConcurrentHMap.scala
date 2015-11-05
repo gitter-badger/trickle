@@ -1,4 +1,4 @@
-package com.benoitlouy.workflow
+package trickle
 
 import scala.collection.concurrent.TrieMap
 

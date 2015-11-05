@@ -20,7 +20,7 @@ val scalazVersion = "7.1.4"
 lazy val root = project.in(file(".")).aggregate(core)
 
 lazy val core = project.in(file("core"))
-  .settings(moduleName := "workflow-core")
+  .settings(moduleName := "trickle-core")
   .settings(workflowSettings)
   .settings(libraryDependencies ++= Seq(
     "org.scalaz" %% "scalaz-core" % scalazVersion,

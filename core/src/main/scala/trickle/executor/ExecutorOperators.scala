@@ -1,6 +1,6 @@
-package com.benoitlouy.workflow.executor
+package trickle.executor
 
-import com.benoitlouy.workflow.step.{StepIO, OptionStep}
+import trickle.step.{StepIO, OptionStep}
 
 object ExecutorOperators {
 

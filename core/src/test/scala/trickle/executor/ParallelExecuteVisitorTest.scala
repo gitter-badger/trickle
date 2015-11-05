@@ -1,12 +1,10 @@
-package com.benoitlouy.workflow.executor
+package trickle.executor
 
-import com.benoitlouy.workflow.step._
+import trickle.step._
 import ExecutorOperators._
 import StepOperators._
 import StepIOOperators._
 import shapeless.syntax.std.tuple._
-
-import scalaz.{Failure, NonEmptyList, Success}
 
 class ParallelExecuteVisitorTest extends  ExecutorSpec[ParallelState] {
 
@@ -27,7 +25,7 @@ class ParallelExecuteVisitorTest extends  ExecutorSpec[ParallelState] {
     val m3 = (m1, b1, b2) |> { (m1,b1,b2) => (m1,b1,b2).foldLeft(0.successIO)(sum) }
     val m4 = (m2, m1, m3, b1, b2) |> { (m2,m1,m3,b1,b2) => (m2,m1,m3,b1,b2).foldLeft(0.successIO)(sum) }
 
-    m4.executeParallel(source1 -> 1)
+    val result = m4.executeParallel(source1 -> 1)
   }
 
 

@@ -1,6 +1,6 @@
-package com.benoitlouy.workflow
+package trickle
 
-import com.benoitlouy.workflow.step._
+import trickle.step._
 
 trait Visitor[T] {
   type stateType = T

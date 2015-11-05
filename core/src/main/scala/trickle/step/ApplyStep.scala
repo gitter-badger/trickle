@@ -1,6 +1,6 @@
-package com.benoitlouy.workflow.step
+package trickle.step
 
-import com.benoitlouy.workflow.Visitor
+import trickle.Visitor
 import shapeless.{HNil, HList, ::}
 import shapeless.syntax.std.product._
 import shapeless.syntax.std.function._

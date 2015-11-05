@@ -1,8 +1,8 @@
-package com.benoitlouy.workflow.executor
+package trickle.executor
 
-import com.benoitlouy.workflow.{Visitor, HMap}
-import com.benoitlouy.workflow.step._
-import com.benoitlouy.workflow.step.StepIOOperators._
+import trickle.{Visitor, HMap}
+import trickle.step._
+import trickle.step.StepIOOperators._
 import shapeless._
 
 class State(val content: HMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[State] {

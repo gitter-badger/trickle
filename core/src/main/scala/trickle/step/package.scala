@@ -1,4 +1,4 @@
-package com.benoitlouy.workflow
+package trickle
 
 import scalaz.ValidationNel
 

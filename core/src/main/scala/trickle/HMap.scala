@@ -1,7 +1,7 @@
-package com.benoitlouy.workflow
+package trickle
 
 import shapeless.poly._
-import shapeless.{HMapBuilder, Poly1}
+import shapeless.Poly1
 
 class HMap[R[_, _]](val underlying: collection.Map[Any, Any] = Map.empty) extends Poly1 {
   def get[K, V](k: K)(implicit ev: R[K, V]): Option[V] = underlying.get(k).asInstanceOf[Option[V]]

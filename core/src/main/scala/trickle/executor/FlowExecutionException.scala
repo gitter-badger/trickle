@@ -1,4 +1,4 @@
-package com.benoitlouy.workflow.executor
+package trickle.executor
 
 class FlowExecutionException(message: String, cause: Option[Throwable] = None) extends Exception(message, cause.orNull)
 

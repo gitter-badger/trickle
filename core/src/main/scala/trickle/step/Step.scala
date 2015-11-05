@@ -1,6 +1,6 @@
-package com.benoitlouy.workflow.step
+package trickle.step
 
-import com.benoitlouy.workflow.Visitor
+import trickle.Visitor
 
 trait OutputStep[O] {
   def accept[T](v: Visitor[T], state: T): T

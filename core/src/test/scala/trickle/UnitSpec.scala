@@ -1,4 +1,4 @@
-package com.benoitlouy.test
+package trickle
 
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, FlatSpec}

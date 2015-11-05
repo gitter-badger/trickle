@@ -1,4 +1,4 @@
-package com.benoitlouy.workflow.step
+package trickle.step
 
 object StepOperators {
 

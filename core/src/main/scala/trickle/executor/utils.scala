@@ -1,10 +1,10 @@
-package com.benoitlouy.workflow.executor
+package trickle.executor
 
 import java.util.concurrent.ExecutorService
 
-import com.benoitlouy.workflow.Visitor
-import com.benoitlouy.workflow.step._
-import com.benoitlouy.workflow.step.StepIOOperators._
+import trickle.Visitor
+import trickle.step._
+import trickle.step.StepIOOperators._
 import shapeless.ops.hlist.{RightFolder, LeftFolder}
 import shapeless.{HNil, HList, Poly2, Poly}
 
