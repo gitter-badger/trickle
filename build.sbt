@@ -33,7 +33,7 @@ lazy val core = project.in(file("core"))
   ))
 
 
-lazy val tricleSettings = buildSettings ++ commonSettings ++ scoverageSettings
+lazy val tricleSettings = buildSettings ++ commonSettings ++ scoverageSettings ++ publishSettings
 
 lazy val commonSettings = Seq(
   scalacOptions ++= commonScalacOptions
@@ -58,6 +58,7 @@ lazy val commonScalacOptions = Seq(
 )
 
 lazy val publishSettings = Seq(
+  publishMavenStyle := true,
   publishTo := {
     val nexus = "https://my.artifact.repo.net/"
     if (isSnapshot.value)
