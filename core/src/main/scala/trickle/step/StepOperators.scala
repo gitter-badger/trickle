@@ -1,5 +1,7 @@
 package trickle.step
 
+import scala.collection.GenSeq
+
 object StepOperators {
 
   implicit class Apply1OperatorConverter[I](val parent: OptionStep[I]) {
@@ -94,7 +96,7 @@ object StepOperators {
     def |<[O](f: StepIO[I] => StepIO[OptionStep[O]]) = new JunctionStep(parent, f)
   }
 
-  implicit class SeqOperatorConverter[I](val parent: OptionStep[Seq[StepIO[I]]]) {
+  implicit class SeqOperatorConverter[I, S[X] <: GenSeq[X]](val parent: OptionStep[S[StepIO[I]]]) {
     def ||>[O](f: StepIO[I] => StepIO[O]) = new SeqStep(parent, f)
   }
 }
