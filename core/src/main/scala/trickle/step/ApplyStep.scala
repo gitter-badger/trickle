@@ -6,7 +6,7 @@ import shapeless.syntax.std.product._
 import shapeless.syntax.std.function._
 
 
-abstract class ApplyStep[T <: HList, I, O](val parents: T, val f: I => StepIO[O]) extends OptionStep[O] { //InputOutputStep[I, O]{
+abstract class ApplyStep[T <: HList, I, O](val parents: T, val f: I => StepIO[O]) extends OptionStep[O] {
   type parentsType = T
   type inputType = I
 }

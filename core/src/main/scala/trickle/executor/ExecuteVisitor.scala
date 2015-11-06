@@ -5,7 +5,8 @@ import trickle.step._
 import trickle.step.StepIOOperators._
 import shapeless._
 
-import scala.collection.GenSeq
+import scala.collection.generic.CanBuildFrom
+import scala.collection.{GenTraversableLike, GenSeq}
 
 class State(val content: HMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[State] {
   implicit object constraint extends (OptionStep ~?> StepResult)
@@ -68,10 +69,11 @@ class ExecuteVisitor extends ExecutionUtils[State] with Visitor[State] with Exec
 
   override def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O](step: Apply22Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O], state: stateType): stateType = process(step, state)
 
-  override def visit[I, O, S[X] <: GenSeq[X]](step: SeqStep[I, O, S], state: stateType): stateType = {
+  override def visit[I, O, S[X] <: GenTraversableLike[X, S[X]]](step: SeqStep[I, O, S], state: stateType): stateType = {
     val newState = step.parent.accept(this, state)
     val input = newState.get(step.parent).get.result
-    val output = (input mMap { (x: S[StepIO[I]]) => x.map(step.f) }).asInstanceOf[StepIO[S[StepIO[O]]]]
+    import step._
+    val output = input mMap { (x: S[StepIO[I]]) => x.map(step.f) }
     newState.put(step, StepResult(output))
   }
 

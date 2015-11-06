@@ -233,9 +233,9 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   }
 
   it should "be able to process SeqStep" in {
-    val source = SourceStep[Set[Int]]()
+    val source = SourceStep[List[Int]]()
 
-    val flow = source |> { _ mMap { _ :+ 3 }} |> { _ mMap { _ map toIO[Int] } } ||> { _ mMap { _ + 1} }
+    val flow = source |> { _ mMap { _ ++ List(3) }} |> { _ mMap { _ map toIO[Int] } } ||> { _ mMap { _ + 1} }
 
     val res = execute(flow, source -> List(1, 2, new RuntimeException("error")))._1
     println(res)

@@ -1,6 +1,7 @@
 package trickle.step
 
-import scala.collection.GenSeq
+import scala.collection.generic.CanBuildFrom
+import scala.collection.{GenTraversableLike, GenSeq}
 
 object StepOperators {
 
@@ -96,7 +97,7 @@ object StepOperators {
     def |<[O](f: StepIO[I] => StepIO[OptionStep[O]]) = new JunctionStep(parent, f)
   }
 
-  implicit class SeqOperatorConverter[I, S[X] <: GenSeq[X]](val parent: OptionStep[S[StepIO[I]]]) {
-    def ||>[O](f: StepIO[I] => StepIO[O]) = new SeqStep(parent, f)
+  implicit class SeqOperatorConverter[I, S[X] <: GenTraversableLike[X, S[X]]](val parent: OptionStep[S[StepIO[I]]]) {
+    def ||>[O](f: StepIO[I] => StepIO[O])(implicit bf: CanBuildFrom[S[StepIO[I]], StepIO[O], S[StepIO[O]]]) = new SeqStep(parent, f)
   }
 }
