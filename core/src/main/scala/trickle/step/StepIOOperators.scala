@@ -23,4 +23,11 @@ object StepIOOperators {
   implicit def ToStepIOSuccessOps[A](a: A): StepIOSuccessOps[A] = new StepIOSuccessOps(a)
   implicit def ToStepIOSuccessOptionOps[A](a: Option[A]): StepIOSuccessOptionOps[A] = new StepIOSuccessOptionOps(a)
   implicit def ToStepIOOps[A](self: StepIO[A]): StepIOOperators[A] = new StepIOOperators(self)
+
+  def toIO[B](a: Any): StepIO[B] = a match {
+    case None => None.successIO.asInstanceOf[StepIO[B]]
+    case Some(e) => e.successIO.asInstanceOf[StepIO[B]]
+    case e: Exception => e.failureIO[B]
+    case e => e.successIO.asInstanceOf[StepIO[B]]
+  }
 }

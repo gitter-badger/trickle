@@ -231,4 +231,13 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     execute(flow, source1 -> 1, source2 -> 2)._1 shouldBe Failure(NonEmptyList(InputMissingException("missing input")))
   }
 
+  it should "be able to process SeqStep" in {
+    val source = SourceStep[Seq[Int]]()
+
+    val flow = source |> { _ mMap { _ :+ 3 }} |> { _ mMap { _ map toIO[Int] }} ||> { _ mMap { _ + 1}}
+
+    val res = execute(flow, source -> List(1, 2, new RuntimeException("error")))
+    println(res)
+  }
+
 }
