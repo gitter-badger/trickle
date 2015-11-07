@@ -120,5 +120,5 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
-addCommandAlias("build", ";core/scalastyle;coverage;core/test;clean;coverageOff;core/compile;examples/compile")
+addCommandAlias("build", ";core/scalastyle;coverage;core/test;examples/compile")
 addCommandAlias("gitSnapshots", ";set version in ThisBuild := git.gitDescribedVersion.value.get + \"-SNAPSHOT\"")
