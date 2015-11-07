@@ -9,6 +9,8 @@ import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 import shapeless._
 
+import scala.collection.GenTraversableLike
+
 class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[ParallelState] {
 
   private object lockPoolFactory extends BaseKeyedPooledObjectFactory[OutputStep[_], Any] {
@@ -97,12 +99,16 @@ class ParallelExecuteVisitor extends ParallelExecutionUtils[ParallelState] with 
 
   override def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O](step: Apply22Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O], state: stateType): stateType = processParallel(step, state)
 
+  override def visit[I, O, S[X] <: GenTraversableLike[X, S[X]]](step: SeqStep[I, O, S], state: stateType): stateType = {
+    val newState = step.parent.accept(this, state)
+    val input = newState.get(step.parent).get.result
+    import step._
+    val output = (input mMap { (x: S[StepIO[I]]) => x.par.map(applySafe(step.f)) }).asInstanceOf[StepIO[S[StepIO[O]]]]
+    newState.put(step, StepResult(output))
+  }
+
   def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], ParallelState) = {
-    val m = Map(input:_*) mapValues {
-      case None => StepResult(None.successIO)
-      case Some(e) => StepResult(e.successIO)
-      case e => StepResult(e.successIO)
-    }
+    val m = Map(input:_*) mapValues { x => StepResult(toIO(x)) }
     val inputState = new ParallelState(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
     val state = step.accept(this, inputState)
     (state.get(step).get.result, state)

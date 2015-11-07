@@ -2,6 +2,8 @@ package trickle
 
 import trickle.step._
 
+import scala.collection.GenTraversableLike
+
 trait Visitor[T] {
   type stateType = T
   def visit[O](step: SourceStep[O], state: stateType): stateType
@@ -28,4 +30,5 @@ trait Visitor[T] {
   def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, O](step: Apply21Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, O], state: stateType): stateType
   def visit[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O](step: Apply22Step[I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, I12, I13, I14, I15, I16, I17, I18, I19, I20, I21, I22, O], state: stateType): stateType
   def visit[I, O](step: JunctionStep[I, O], state: stateType): stateType
+  def visit[I, O, S[X] <: GenTraversableLike[X, S[X]]](step: SeqStep[I, O, S], state: stateType): stateType
 }

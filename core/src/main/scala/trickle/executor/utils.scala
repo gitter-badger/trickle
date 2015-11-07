@@ -27,7 +27,7 @@ trait ExecutionUtils[S <: ExecutorState[S]] { self: Visitor[S] =>
     state.processStep(step) {
       val newState = step.parent.accept(this, state)
       val input = newState.get(step.parent).get.result
-      val branch = applySafe(step.f, input)
+      val branch = applySafe(step.f)(input)
       branch match {
         case Success(Some(s)) => {
           val newNewState = s.accept(this, newState)
@@ -55,11 +55,11 @@ trait ExecutionUtils[S <: ExecutorState[S]] { self: Visitor[S] =>
     state.processStep(step) {
       val newState = step.parents.foldLeft(state)(visitParents)
       val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
-      newState2.put(step, StepResult(applySafe(step.f, input)))
+      newState2.put(step, StepResult(applySafe(step.f)(input)))
     }
   }
 
-  def applySafe[I, O](mapper: I => StepIO[O], e: I) = {
+  def applySafe[I, O](mapper: I => StepIO[O])(e: I) = {
     try {
       mapper(e)
     } catch {
@@ -86,7 +86,7 @@ trait ParallelExecutionUtils[S <: ExecutorState[S]] extends ExecutionUtils[S] { 
       val (tasks, newState) = step.parents.foldRight((Nil.asInstanceOf[List[Task[stateType]]], state))(visitParentsParallel)
       Task.gatherUnordered(tasks).run
       val (input, newState2) = step.parents.foldRight((HNil, newState))(getResults)
-      newState2.put(step, StepResult(applySafe(step.f, input)))
+      newState2.put(step, StepResult(applySafe(step.f)(input)))
     }
   }
 }

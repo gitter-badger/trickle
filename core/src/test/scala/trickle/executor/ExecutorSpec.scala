@@ -7,7 +7,7 @@ import trickle.step._
 import shapeless.Poly2
 import shapeless.syntax.std.tuple._
 
-import scalaz.{NonEmptyList, Failure, Success, Validation}
+import scalaz.{NonEmptyList, Failure, Success}
 import scalaz.syntax.apply._
 
 trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
@@ -229,6 +229,22 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     val (Failure(NonEmptyList(e)), _) = execute(flow, switch -> -1, source1 -> 1, source2 -> 2)
     e.getMessage shouldBe "cannot process negative input"
     execute(flow, source1 -> 1, source2 -> 2)._1 shouldBe Failure(NonEmptyList(InputMissingException("missing input")))
+  }
+
+  it should "be able to process SeqStep" in {
+    val source = SourceStep[List[Int]]()
+
+    val root = source |> { _ mMap { _ map toIO[Int] } }
+
+    val flow = root ||> { _ mMap(_ + 1)}
+
+    val result = execute(flow, source -> List(1, 2, InputMissingException("error")))._1
+    result shouldBe Success(Some(Success(Some(2)) :: Success(Some(3)) :: Failure(NonEmptyList(InputMissingException("error"))) :: Nil))
+
+    val flowWithException = root ||> { _ mMap { x => if (x == 1) throw InputMissingException("foo") else x + 1} }
+
+    val resultWithException = execute(flowWithException, source -> List(1, 2, InputMissingException("error")))._1
+    resultWithException shouldBe Success(Some(Failure(NonEmptyList(InputMissingException("foo"))) :: Success(Some(3)) :: Failure(NonEmptyList(InputMissingException("error"))) :: Nil))
   }
 
 }
