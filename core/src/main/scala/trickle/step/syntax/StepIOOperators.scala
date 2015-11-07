@@ -23,12 +23,6 @@ trait StepIOOperators {
     def mMap[B](f: A => B): StepIO[B] = self map { inner: Option[A] => inner map f }
   }
 
-
-//  implicit def ToStepIOFailureOps(ex: Exception): StepIOFailureOps = new StepIOFailureOps(ex)
-//  implicit def ToStepIOSuccessOps[A](a: A): StepIOSuccessOps[A] = new StepIOSuccessOps(a)
-//  implicit def ToStepIOSuccessOptionOps[A](a: Option[A]): StepIOSuccessOptionOps[A] = new StepIOSuccessOptionOps(a)
-//  implicit def ToStepIOOps[A](self: StepIO[A]): StepIOOperators[A] = new StepIOOperators(self)
-
   def toIO[B](a: Any): StepIO[B] = a match {
     case None => None.successIO.asInstanceOf[StepIO[B]]
     case Some(e) => e.successIO.asInstanceOf[StepIO[B]]

@@ -1,5 +1,6 @@
 package trickle
 
+import trickle.step.{StepIO, OptionStep}
 import trickle.syntax.executor._
 import trickle.syntax.step._
 
@@ -52,6 +53,20 @@ object parallelFlow extends App {
   val flow = (branch1, branch2) |> { (s, i) => (s |@| i) { case (os, oi) => Some(os.get * oi.get) } }
 
   val (result, state) = flow.executeParallel(inputString -> "trickle", inputIntAsString -> "2")
+
+  println(s"Flow result: ${result}")
+}
+
+object conditionalBranching extends App {
+  val inputString1 = source[String]
+  val inputString2 = source[String]
+  val inputCondition = source[Int]
+
+  val flow = inputCondition |< { _ mMap[OptionStep[String]] { i =>
+    if (i == 0) inputString1 else inputString2
+  }}
+
+  val (result, state) = flow.execute(inputString1 -> "foo", inputString2 -> "bar", inputCondition -> 0)
 
   println(s"Flow result: ${result}")
 }
