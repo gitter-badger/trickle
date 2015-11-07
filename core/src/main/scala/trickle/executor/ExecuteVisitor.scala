@@ -1,8 +1,8 @@
 package trickle.executor
 
+import trickle.syntax.step._
 import trickle.{Visitor, HMap}
 import trickle.step._
-import trickle.step.StepIOOperators._
 import shapeless._
 
 import scala.collection.GenTraversableLike

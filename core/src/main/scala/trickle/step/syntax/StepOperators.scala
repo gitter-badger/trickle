@@ -1,9 +1,13 @@
-package trickle.step
+package trickle.step.syntax
 
-import scala.collection.generic.CanBuildFrom
+import trickle.step._
+
 import scala.collection.GenTraversableLike
+import scala.collection.generic.CanBuildFrom
 
-object StepOperators {
+trait StepOperators {
+
+  def source[T](): SourceStep[T] = new SourceStep[T]()
 
   implicit class Apply1OperatorConverter[I](val parent: OptionStep[I]) {
     def |>[O](f: StepIO[I] => StepIO[O]) = new Apply1Step(parent, f)

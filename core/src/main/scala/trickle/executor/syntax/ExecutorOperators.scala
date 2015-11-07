@@ -1,8 +1,9 @@
-package trickle.executor
+package trickle.executor.syntax
 
-import trickle.step.{StepIO, OptionStep}
+import trickle.executor.{Executor, ParallelState, State}
+import trickle.step.{OptionStep, StepIO}
 
-object ExecutorOperators {
+trait ExecutorOperators {
 
   implicit class ExecuteFlowOps[O](val workflow: OptionStep[O]) {
     def execute(input: (OptionStep[_], Any)*): (StepIO[O], State) = Executor().execute(workflow, input:_*)

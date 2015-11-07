@@ -4,7 +4,7 @@ import java.util.concurrent.ExecutorService
 
 import trickle.Visitor
 import trickle.step._
-import trickle.step.StepIOOperators._
+import trickle.syntax.step._
 import shapeless.ops.hlist.{RightFolder, LeftFolder}
 import shapeless.{HNil, HList, Poly2, Poly}
 

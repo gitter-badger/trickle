@@ -1,7 +1,7 @@
 package trickle.executor
 
+import trickle.syntax.executor._
 import trickle.step._
-import trickle.executor.ExecutorOperators._
 
 class ExecuteVisitorTest extends ExecutorSpec[State] {
 

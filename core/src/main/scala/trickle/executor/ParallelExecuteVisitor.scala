@@ -2,9 +2,9 @@ package trickle.executor
 
 import java.util.concurrent.Executors
 
+import trickle.syntax.step._
 import trickle.{Visitor, ConcurrentHMap}
 import trickle.step._
-import trickle.step.StepIOOperators._
 import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 import shapeless._

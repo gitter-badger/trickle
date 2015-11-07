@@ -1,7 +1,6 @@
 package trickle.executor
 
-import trickle.step.StepIOOperators._
-import trickle.step.StepOperators._
+import trickle.syntax.step._
 import trickle.UnitSpec
 import trickle.step._
 import shapeless.Poly2
@@ -15,39 +14,39 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], S)
 
   "An Executor" should "return input when executing SourceStep" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
-    val (result, state) = execute(source, source -> 1)
+    val (result, _) = execute(integer, integer -> 1)
 
     result shouldBe Success(Some(1))
   }
 
   it should "return a failure when executing SourceStep and input is missing" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
-    val (result, state) = execute(source)
+    val (result, _) = execute(integer)
 
     result shouldBe failure
   }
 
   it should "execute mapping step" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
-    val flow = source |> { _ mMap { _.toString } }
+    val flow = integer |> { _ mMap { _.toString } }
 
-    val (result, state) = execute(flow, source -> 1)
+    val (result, _) = execute(flow, integer -> 1)
 
     result shouldBe Success(Some("1"))
   }
 
   it should "fail when executing mapping step and input is missing" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
     val f: StepIO[Int] => StepIO[String] = _ mMap { _.toString }
 
-    val flow = source |> { f }
+    val flow = integer |> { f }
 
-    val (result, state) = execute(flow)
+    val (result, _) = execute(flow)
 
     result shouldBe failure
 
@@ -57,11 +56,11 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   }
 
   it should "fail when mapping step throws" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
-    val flow: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error") }
+    val flow: Apply1Step[Int, String] = integer |> { x => throw new RuntimeException("error") }
 
-    val (result, state) = execute(flow, source -> 1)
+    val (result, _) = execute(flow, integer -> 1)
 
     result shouldBe failure
 
@@ -71,11 +70,11 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   }
 
   it should "fail when mapping step fails" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
-    val flow = source |> { x => new RuntimeException("error").failureIO[String] }
+    val flow = integer |> { x => new RuntimeException("error").failureIO[String] }
 
-    val (result, state) = execute(flow, source -> 1)
+    val (result, _) = execute(flow, integer -> 1)
 
     result shouldBe failure
 
@@ -85,79 +84,79 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   }
 
   it should "execute chained mapping steps" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
     val inc = (_: StepIO[Int]) mMap { _ + 1 }
 
-    val flow = source |> { inc } |> { inc } |> { inc }
+    val flow = integer |> { inc } |> { inc } |> { inc }
 
-    val (result, state) = execute(flow, source -> 1)
+    val (result, _) = execute(flow, integer -> 1)
 
     result shouldBe Success(Some(4))
   }
 
   it should "execute zip step" in {
-    val source1 = SourceStep[Int]()
-    val source2 = SourceStep[String]()
+    val integer = source[Int]
+    val string = source[String]
 
-    val flow = (source1, source2) |> { (i, s) =>  (i |@| s) { case (a, b) => Some(b.get * a.get) }  }
+    val flow = (integer, string) |> { (i, s) =>  (i |@| s) { case (a, b) => Some(b.get * a.get) }  }
 
-    val (result, state) = execute(flow, source1 -> 3, source2 -> "foo")
+    val (result, _) = execute(flow, integer -> 3, string -> "foo")
 
     result shouldBe Success(Some("foo" * 3))
   }
 
 
   it should "execute complex flow" in {
-    val source1 = SourceStep[Int]()
-    val source2 = SourceStep[String]()
+    val integer = source[Int]
+    val string = source[String]
 
-    val flow = (source1 |> { _ mMap { _ * 2 } },
-      source2 |> { _ mMap { s => s + s } }, source1) |> {
+    val flow = (integer |> { _ mMap { _ * 2 } },
+      string |> { _ mMap { s => s + s } }, integer) |> {
       (i, s, j) => (i |@| s |@| j) { case (a, b, c) => Some(b.get * (a.get + c.get))}
     }
 
-    val (result, state) = execute(flow, source1 -> 3, source2 -> "foo")
+    val (result, _) = execute(flow, integer -> 3, string -> "foo")
 
     result shouldBe Success(Some("foo" * 18))
   }
 
   it should "execute each step only once and reuse the output" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
     var count = 0
-    val branch = source |> { _ mMap { x => count += 1; count } }
+    val branch = integer |> { _ mMap { x => count += 1; count } }
     val flow = (branch, branch) |> { (a, b) => (a |@| b) { case (a, b) => Some((a.get, b.get) )}}
 
-    val (result, state) = execute(flow, source -> 1)
+    val (result, _) = execute(flow, integer -> 1)
 
     result shouldBe Success(Some((1, 1)))
   }
 
   it should "not block on diamond topology" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
-    val root = source |> { _ mMap { _ + 1 }}
+    val root = integer |> { _ mMap { _ + 1 }}
     val b1 = root |> { _ mMap { _ * 2 }} |> { _ mMap { _.toString }}
     val b2 = root |> { _ mMap { _ * 3 }}
 
     val flow = (b1, b2) |> { (b1, b2) => (b1 |@| b2) { case (a, b) => Some((a.get, b.get))}}
 
-    val (result, state) = execute(flow, source -> 1)
+    val (result, _) = execute(flow, integer -> 1)
 
     result shouldBe Success(Some(("4", 6)))
   }
 
   it should "return failure when parents steps fails" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
-    val branch1 = source |> { _ mMap { _ + 1 }} |> { x => new RuntimeException("error1").failureIO[String] }
-    val branch2: Apply1Step[Int, String] = source |> { x => throw new RuntimeException("error2")}
+    val branch1 = integer |> { _ mMap { _ + 1 }} |> { x => new RuntimeException("error1").failureIO[String] }
+    val branch2: Apply1Step[Int, String] = integer |> { x => throw new RuntimeException("error2")}
     val flow = (branch1, branch2) |> { (a, b) =>
       (a |@| b) { case (a, b) => Some(a.get + b.get)}
     }
 
-    val (result, state) = execute(flow, source -> 42)
+    val (result, _) = execute(flow, integer -> 42)
 
     val Failure(NonEmptyList(ex1, ex2)) = result
     ex1.getMessage shouldBe "error1"
@@ -171,11 +170,11 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   }
 
   it should "execute apply step with up to 22 inputs" in {
-    val source = SourceStep[Int]()
+    val integer = source[Int]
 
     def createSteps(count: Int): List[OptionStep[Int]] = {
       if (count > 0) {
-        (source |> { x => x }) :: createSteps(count - 1)
+        (integer |> { x => x }) :: createSteps(count - 1)
       } else {
         Nil
       }
@@ -209,14 +208,14 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     )
 
     for ((flow, i) <- flows.zipWithIndex) {
-      execute(flow, source -> 1)._1 shouldBe Success(Some(i + 1))
+      execute(flow, integer -> 1)._1 shouldBe Success(Some(i + 1))
     }
   }
 
   it should "execute conditional branching" in {
-    val switch = SourceStep[Int]()
-    val source1 = SourceStep[Int]()
-    val source2 = SourceStep[Int]()
+    val switch = source[Int]
+    val source1 = source[Int]
+    val source2 = source[Int]
 
     val flow = switch |< { _ mMap[OptionStep[Int]] { y =>
       if (y < 0) throw new RuntimeException("cannot process negative input")
@@ -232,18 +231,18 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   }
 
   it should "be able to process SeqStep" in {
-    val source = SourceStep[List[Int]]()
+    val intList = source[List[Int]]
 
-    val root = source |> { _ mMap { _ map toIO[Int] } }
+    val root = intList |> { _ mMap { _ map toIO[Int] } }
 
     val flow = root ||> { _ mMap(_ + 1)}
 
-    val result = execute(flow, source -> List(1, 2, InputMissingException("error")))._1
+    val result = execute(flow, intList -> List(1, 2, InputMissingException("error")))._1
     result shouldBe Success(Some(Success(Some(2)) :: Success(Some(3)) :: Failure(NonEmptyList(InputMissingException("error"))) :: Nil))
 
     val flowWithException = root ||> { _ mMap { x => if (x == 1) throw InputMissingException("foo") else x + 1} }
 
-    val resultWithException = execute(flowWithException, source -> List(1, 2, InputMissingException("error")))._1
+    val resultWithException = execute(flowWithException, intList -> List(1, 2, InputMissingException("error")))._1
     resultWithException shouldBe Success(Some(Failure(NonEmptyList(InputMissingException("foo"))) :: Success(Some(3)) :: Failure(NonEmptyList(InputMissingException("error"))) :: Nil))
   }
 
