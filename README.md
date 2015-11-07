@@ -79,3 +79,46 @@ errorResult will have the value ```Failure(NonEmptyList(java.lang.NumberFormatEx
 
 ### Parallel worflow and concurrency
 
+Let's create 2 flows:
+
+* ```branch1``` which takes a ```String``` as input and append " rocks " to it.
+* ```branch2``` which takes a ```String``` representing an integer, converts it to an actual ```Int`` and then multiplies it by 2.
+
+```scala
+val inputString = source[String]
+val inputIntAsString = source[String]
+
+val branch1 = inputString |> { _.mMap(_ + " rocks ") }
+val branch2 = inputIntAsString |> { _.mMap(_.toInt) } |> { _.mMap(_ * 2) }
+```
+
+What we want to achieve is combine the results of these two flows into one to obtain a string made of n times the result of ```branch1```, where n is the result of ```branch2```.
+
+To do so, we put the two branches together into a tuple and pipe it into a function taking two ```StepIO``` as input. In this case a function taking a ```StepIO[String]``` and a ```StepIO[Int]``` as input.
+
+```scala
+val flow = (branch1, branch2) |> { (s, i) => (s |@| i) { case (os, oi) => Some(os.get * oi.get) } }
+```
+
+Since ```StepIO``` is a ```scalaz.Validation``` we can use the ```|@|``` operator to check that `s` and `i` are both successes.
+
+We can now execute the flow by doing the following:
+
+```scala
+val (result, state) = flow.execute(inputString -> "trickle", inputIntAsString -> "2")
+```
+This will execute `branch1` then execute `branch2` and then combine the two.
+
+We can also execute branches at the same time by executing the flow this way:
+
+```scala
+val (result, state) = flow.executeParallel(inputString -> "trickle", inputIntAsString -> "2")
+```
+
+Trickle will automatically spawn threads to execute the branches concurrently. It will collect the results and call the function to combine them.
+
+You can combine the results of up to 22 branches, in which case Trickle will execute the 22 branches in parallel.
+
+The result of the above workflow executions is `Success(Some("trickle rocks trickle rocks trickle rocks trickle rocks "))`
+
+

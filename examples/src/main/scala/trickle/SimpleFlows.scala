@@ -46,13 +46,13 @@ object parallelFlow extends App {
   val inputString = source[String]
   val inputIntAsString = source[String]
 
-  val flow = (
-    inputString |> { _.mMap(_ + " rocks ") },
-    inputIntAsString |> { _.mMap(_.toInt) } |> { _.mMap(_ * 2) }
-    ) |> { (s, i) => (s |@| i) { case (os, oi) => Some(os.get * oi.get) } }
+  val branch1 = inputString |> { _.mMap(_ + " rocks ") }
+  val branch2 = inputIntAsString |> { _.mMap(_.toInt) } |> { _.mMap(_ * 2) }
+
+  val flow = (branch1, branch2) |> { (s, i) => (s |@| i) { case (os, oi) => Some(os.get * oi.get) } }
 
   val (result, state) = flow.executeParallel(inputString -> "trickle", inputIntAsString -> "2")
 
-  println(result)
+  println(s"Flow result: ${result}")
 }
 
