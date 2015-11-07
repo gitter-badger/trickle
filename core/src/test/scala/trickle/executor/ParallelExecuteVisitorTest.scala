@@ -7,7 +7,7 @@ import shapeless.syntax.std.tuple._
 
 class ParallelExecuteVisitorTest extends  ExecutorSpec[ParallelState] {
 
-  override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], ParallelState) = step.executeParallel(input:_*)
+  override def execute[O](step: Step[O], input: (Step[_], Any)*): (StepIO[O], ParallelState) = step.executeParallel(input:_*)
 
   it should "not starve for thread" in {
     val integer = source[Int]

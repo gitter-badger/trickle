@@ -6,8 +6,4 @@ trait OutputStep[O] {
   def accept[T](v: Visitor[T], state: T): T
 }
 
-trait OptionStep[O] extends OutputStep[StepIO[O]]
-
-trait InputOutputStep[I, O] extends OptionStep[O] {
-  def mapper: (I => StepIO[O])
-}
+trait Step[O] extends OutputStep[StepIO[O]]

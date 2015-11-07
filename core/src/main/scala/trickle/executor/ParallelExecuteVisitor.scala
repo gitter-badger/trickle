@@ -11,7 +11,7 @@ import shapeless._
 
 import scala.collection.GenTraversableLike
 
-class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[ParallelState] {
+class ParallelState(val content: ConcurrentHMap[(Step ~?> StepResult)#λ]) extends ExecutorState[ParallelState] {
 
   private object lockPoolFactory extends BaseKeyedPooledObjectFactory[OutputStep[_], Any] {
     override def wrap(value: Any): PooledObject[Any] = new DefaultPooledObject[Any](value)
@@ -22,13 +22,13 @@ class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ])
   }
   private object lockPool extends GenericKeyedObjectPool(lockPoolFactory, lockPoolConfig)
 
-  implicit object constraint extends (OptionStep ~?> StepResult)
+  implicit object constraint extends (Step ~?> StepResult)
 
-  def get[O](k: OptionStep[O]): Option[StepResult[O]] = content.get(k)
+  def get[O](k: Step[O]): Option[StepResult[O]] = content.get(k)
 
 
 
-  override def put[O](step: OptionStep[O], stepResult: StepResult[O]): ParallelState = {
+  override def put[O](step: Step[O], stepResult: StepResult[O]): ParallelState = {
     content += (step, stepResult)
     this
   }
@@ -38,7 +38,7 @@ class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ])
     this
   }
 
-  def processStep[O](step: OptionStep[O])(f: => ParallelState): ParallelState = {
+  def processStep[O](step: Step[O])(f: => ParallelState): ParallelState = {
     val lock = lockPool.borrowObject(step)
     try {
       get(step) match {
@@ -107,9 +107,9 @@ class ParallelExecuteVisitor extends ParallelExecutionUtils[ParallelState] with 
     newState.put(step, StepResult(output))
   }
 
-  def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], ParallelState) = {
+  def execute[O](step: Step[O], input: (Step[_], Any)*): (StepIO[O], ParallelState) = {
     val m = Map(input:_*) mapValues { x => StepResult(toIO(x)) }
-    val inputState = new ParallelState(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
+    val inputState = new ParallelState(new ConcurrentHMap[~?>[Step, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
     val state = step.accept(this, inputState)
     (state.get(step).get.result, state)
   }

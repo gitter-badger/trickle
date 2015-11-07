@@ -1,6 +1,6 @@
 package trickle
 
-import trickle.step.{StepIO, OptionStep}
+import trickle.step.Step
 import trickle.syntax.executor._
 import trickle.syntax.step._
 
@@ -62,9 +62,7 @@ object conditionalBranching extends App {
   val inputString2 = source[String]
   val inputCondition = source[Int]
 
-  val flow = inputCondition |< { _ mMap[OptionStep[String]] { i =>
-    if (i == 0) inputString1 else inputString2
-  }}
+  val flow = inputCondition |< { _.mMap[Step[String]] { i => if (i == 0) inputString1 else inputString2 } }
 
   val (result, state) = flow.execute(inputString1 -> "foo", inputString2 -> "bar", inputCondition -> 0)
 

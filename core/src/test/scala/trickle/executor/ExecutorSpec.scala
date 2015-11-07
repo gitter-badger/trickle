@@ -11,7 +11,7 @@ import scalaz.syntax.apply._
 
 trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
 
-  def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], S)
+  def execute[O](step: Step[O], input: (Step[_], Any)*): (StepIO[O], S)
 
   "An Executor" should "return input when executing SourceStep" in {
     val integer = source[Int]
@@ -172,7 +172,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   it should "execute apply step with up to 22 inputs" in {
     val integer = source[Int]
 
-    def createSteps(count: Int): List[OptionStep[Int]] = {
+    def createSteps(count: Int): List[Step[Int]] = {
       if (count > 0) {
         (integer |> { x => x }) :: createSteps(count - 1)
       } else {
@@ -217,7 +217,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     val source1 = source[Int]
     val source2 = source[Int]
 
-    val flow = switch |< { _ mMap[OptionStep[Int]] { y =>
+    val flow = switch |< { _ mMap[Step[Int]] { y =>
       if (y < 0) throw new RuntimeException("cannot process negative input")
       if (y == 0) source1 else source2
     }} |> { _ mMap { _ + 1} }

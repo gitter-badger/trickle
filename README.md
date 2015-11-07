@@ -120,5 +120,3 @@ Trickle will automatically spawn threads to execute the branches concurrently. I
 You can combine the results of up to 22 branches, in which case Trickle will execute the 22 branches in parallel.
 
 The result of the above workflow executions is `Success(Some("trickle rocks trickle rocks trickle rocks trickle rocks "))`
-
-
