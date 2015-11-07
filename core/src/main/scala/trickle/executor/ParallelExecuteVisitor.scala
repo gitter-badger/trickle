@@ -9,8 +9,7 @@ import org.apache.commons.pool2.{PooledObject, BaseKeyedPooledObjectFactory}
 import org.apache.commons.pool2.impl.{GenericKeyedObjectPoolConfig, DefaultPooledObject, GenericKeyedObjectPool}
 import shapeless._
 
-import scala.collection.generic.CanBuildFrom
-import scala.collection.{GenTraversableLike, GenSeq}
+import scala.collection.GenTraversableLike
 
 class ParallelState(val content: ConcurrentHMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[ParallelState] {
 
@@ -109,11 +108,7 @@ class ParallelExecuteVisitor extends ParallelExecutionUtils[ParallelState] with 
   }
 
   def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], ParallelState) = {
-    val m = Map(input:_*) mapValues {
-      case None => StepResult(None.successIO)
-      case Some(e) => StepResult(e.successIO)
-      case e => StepResult(e.successIO)
-    }
+    val m = Map(input:_*) mapValues { x => StepResult(toIO(x)) }
     val inputState = new ParallelState(new ConcurrentHMap[~?>[OptionStep, StepResult]#λ](m.asInstanceOf[Map[Any, Any]]))
     val state = step.accept(this, inputState)
     (state.get(step).get.result, state)

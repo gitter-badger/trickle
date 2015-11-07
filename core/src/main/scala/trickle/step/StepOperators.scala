@@ -1,7 +1,7 @@
 package trickle.step
 
 import scala.collection.generic.CanBuildFrom
-import scala.collection.{GenTraversableLike, GenSeq}
+import scala.collection.GenTraversableLike
 
 object StepOperators {
 

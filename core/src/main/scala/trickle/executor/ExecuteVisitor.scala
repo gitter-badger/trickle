@@ -5,8 +5,7 @@ import trickle.step._
 import trickle.step.StepIOOperators._
 import shapeless._
 
-import scala.collection.generic.CanBuildFrom
-import scala.collection.{GenTraversableLike, GenSeq}
+import scala.collection.GenTraversableLike
 
 class State(val content: HMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[State] {
   implicit object constraint extends (OptionStep ~?> StepResult)

@@ -2,8 +2,7 @@ package trickle
 
 import trickle.step._
 
-import scala.collection.generic.CanBuildFrom
-import scala.collection.{GenTraversableLike, GenSeq}
+import scala.collection.GenTraversableLike
 
 trait Visitor[T] {
   type stateType = T

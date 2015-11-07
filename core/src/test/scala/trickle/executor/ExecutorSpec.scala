@@ -7,8 +7,7 @@ import trickle.step._
 import shapeless.Poly2
 import shapeless.syntax.std.tuple._
 
-import scala.collection.GenSeq
-import scalaz.{NonEmptyList, Failure, Success, Validation}
+import scalaz.{NonEmptyList, Failure, Success}
 import scalaz.syntax.apply._
 
 trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
