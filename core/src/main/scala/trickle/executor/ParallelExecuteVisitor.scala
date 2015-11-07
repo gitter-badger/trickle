@@ -104,7 +104,7 @@ class ParallelExecuteVisitor extends ParallelExecutionUtils[ParallelState] with 
     val newState = step.parent.accept(this, state)
     val input = newState.get(step.parent).get.result
     import step._
-    val output = (input mMap { (x: S[StepIO[I]]) => x.par.map(step.f) }).asInstanceOf[StepIO[S[StepIO[O]]]]
+    val output = (input mMap { (x: S[StepIO[I]]) => x.par.map(applySafe(step.f)) }).asInstanceOf[StepIO[S[StepIO[O]]]]
     newState.put(step, StepResult(output))
   }
 

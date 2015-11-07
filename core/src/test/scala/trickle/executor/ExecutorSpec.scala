@@ -235,10 +235,17 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   it should "be able to process SeqStep" in {
     val source = SourceStep[List[Int]]()
 
-    val flow = source |> { _ mMap { _ ++ List(3) }} |> { _ mMap { _ map toIO[Int] } } ||> { _ mMap { _ + 1} }
+    val root = source |> { _ mMap { _ map toIO[Int] } }
 
-    val res = execute(flow, source -> List(1, 2, new RuntimeException("error")))._1
-    println(res)
+    val flow = root ||> { _ mMap(_ + 1)}
+
+    val result = execute(flow, source -> List(1, 2, InputMissingException("error")))._1
+    result shouldBe Success(Some(Success(Some(2)) :: Success(Some(3)) :: Failure(NonEmptyList(InputMissingException("error"))) :: Nil))
+
+    val flowWithException = root ||> { _ mMap { x => if (x == 1) throw InputMissingException("foo") else x + 1} }
+
+    val resultWithException = execute(flowWithException, source -> List(1, 2, InputMissingException("error")))._1
+    resultWithException shouldBe Success(Some(Failure(NonEmptyList(InputMissingException("foo"))) :: Success(Some(3)) :: Failure(NonEmptyList(InputMissingException("error"))) :: Nil))
   }
 
 }

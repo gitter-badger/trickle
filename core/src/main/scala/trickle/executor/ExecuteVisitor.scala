@@ -73,7 +73,7 @@ class ExecuteVisitor extends ExecutionUtils[State] with Visitor[State] with Exec
     val newState = step.parent.accept(this, state)
     val input = newState.get(step.parent).get.result
     import step._
-    val output = input mMap { (x: S[StepIO[I]]) => x.map(step.f) }
+    val output = input mMap { (x: S[StepIO[I]]) => x.map(applySafe(step.f))}
     newState.put(step, StepResult(output))
   }
 
