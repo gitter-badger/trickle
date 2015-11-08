@@ -20,7 +20,7 @@ trickle-core depends on
 ### SBT
 
 ```scala
-libraryDependencies ++= "com.github.benoitlouy" %% 
+libraryDependencies ++= "com.github.benoitlouy" %% "trickle-core" % "0.1.0"
 ```
 
 ### Imports
