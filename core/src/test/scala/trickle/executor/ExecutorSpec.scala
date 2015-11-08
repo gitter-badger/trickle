@@ -217,7 +217,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     val source1 = source[Int]
     val source2 = source[Int]
 
-    val flow = switch |< { _ ioMap[Step[Int]] { y =>
+    val flow = switch |< { _ ioMap { y =>
       if (y < 0) throw new RuntimeException("cannot process negative input")
       if (y == 0) source1 else source2
     }} |> { _ ioMap { _ + 1} }

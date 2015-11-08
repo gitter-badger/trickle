@@ -1,6 +1,6 @@
 package trickle
 
-import trickle.step.Step
+import trickle.step.{StepIO, SourceStep, Step}
 import trickle.syntax.executor._
 import trickle.syntax.step._
 
@@ -15,10 +15,10 @@ object convertStringToIntegerAndIncrement extends App {
   //  - a success with a value (None)
   //  - a success without a value (Some)
   // For convenience, trickle provide the ioMap operator which unwrap the Validation and the Option
-  val integer = input |> { _.ioMap(_.toInt) }
+  val integer = input |> { _ ioMap(_.toInt) }
 
   // Increment the Int.
-  val flow = integer |> { _.ioMap(_ + 1) }
+  val flow = integer |> { _ ioMap(_ + 1) }
 
   // Execute the flow defined above with input "41".
   // Executing a flow returns the result of the flow execution and the final execution state which contain the result
@@ -47,8 +47,8 @@ object parallelFlow extends App {
   val inputString = source[String]
   val inputIntAsString = source[String]
 
-  val branch1 = inputString |> { _.ioMap(_ + " rocks ") }
-  val branch2 = inputIntAsString |> { _.ioMap(_.toInt) } |> { _.ioMap(_ * 2) }
+  val branch1 = inputString |> { _ ioMap(_ + " rocks ") }
+  val branch2 = inputIntAsString |> { _ ioMap(_.toInt) } |> { _ ioMap(_ * 2) }
 
   // We want to combine the results produced by the two branches.
   val flow = (branch1, branch2) |> { (s, i) => (s |@| i) { case (os, oi) => Some(os.get * oi.get) } }
@@ -61,13 +61,17 @@ object parallelFlow extends App {
 }
 
 object conditionalBranching extends App {
-  val inputString1 = source[String]
-  val inputString2 = source[String]
+
+  val inputString = source[String]
+  val inputInt = source[Int]
   val inputCondition = source[Int]
 
-  val flow = inputCondition |< { _.ioMap[Step[String]] { i => if (i == 0) inputString1 else inputString2 } }
+  val branch = inputInt |> { _ ioMap(_ + 1) }
 
-  val (result, state) = flow.execute(inputString1 -> "foo", inputString2 -> "bar", inputCondition -> 0)
+  val flow = inputCondition |< { _ ioMap { i => if (i == 0) inputString else branch } }
+
+  val (result, state) = flow.execute(inputString -> "foo", inputInt -> 2, inputCondition -> 0)
+
 
   println(s"Flow result: ${result}")
 }
@@ -87,7 +91,7 @@ object traversable extends App {
   // fail entirely, only the conversion of foo will result in a failure.
   val flow2 = input |> { _ ioMap { _ map toIO[String] }} ||> { _ ioMap(_.toInt) }
 
-  val (result2, state2) = flow2.execute(input -> List("1", "2", "3", "foo"))
+  val (result2, state2) = flow2.executeParallel(input -> List("1", "2", "3", "foo"))
 
   println(s"Flow result: ${result2}")
 

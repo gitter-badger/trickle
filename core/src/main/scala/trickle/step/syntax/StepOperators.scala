@@ -7,7 +7,7 @@ import scala.collection.generic.CanBuildFrom
 
 trait StepOperators {
 
-  def source[T](): SourceStep[T] = new SourceStep[T]()
+  def source[T]: SourceStep[T] = new SourceStep[T]()
 
   implicit class Apply1OperatorConverter[I](val parent: Step[I]) {
     def |>[O](f: StepIO[I] => StepIO[O]) = new Apply1Step(parent, f)
