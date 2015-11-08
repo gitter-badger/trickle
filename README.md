@@ -1,5 +1,7 @@
 # Trickle
 
+[![Join the chat at https://gitter.im/benoitlouy/trickle](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/benoitlouy/trickle?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status](https://travis-ci.org/benoitlouy/trickle.svg)](https://travis-ci.org/benoitlouy/trickle.svg?branch=master)
 [![codecov.io](http://codecov.io/github/benoitlouy/trickle/coverage.svg?branch=master)](http://codecov.io/github/benoitlouy/trickle?branch=master)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.benoitlouy/trickle/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.benoitlouy/trickle)
