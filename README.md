@@ -50,16 +50,16 @@ The input (and output) of a step is a ```StepIO[X]``` which is nothing more than
 * a success without a value: ```None```
 * a success with a value: ```Some(e)```
 
-For convenience, trickle provide the mMap operator which unwrap the Validation and the Option
+For convenience, trickle provide the ioMap operator which unwrap the Validation and the Option
 
 ```scala
-val integer = input |> { _.mMap(_.toInt) }
+val integer = input |> { _.ioMap(_.toInt) }
 ```
 
 Let's increment the Int.
 
 ```scala
-val flow = integer |> { _.mMap(_ + 1) }
+val flow = integer |> { _.ioMap(_ + 1) }
 ```
 
 We then execute the flow defined above with input "41". Executing a flow returns the result of the flow execution and the final execution state which contain the result of all the steps the flow is made of.
@@ -101,8 +101,8 @@ Let's create 2 flows:
 val inputString = source[String]
 val inputIntAsString = source[String]
 
-val branch1 = inputString |> { _.mMap(_ + " rocks ") }
-val branch2 = inputIntAsString |> { _.mMap(_.toInt) } |> { _.mMap(_ * 2) }
+val branch1 = inputString |> { _.ioMap(_ + " rocks ") }
+val branch2 = inputIntAsString |> { _.ioMap(_.toInt) } |> { _.ioMap(_ * 2) }
 ```
 
 What we want to achieve is combine the results of these two flows into one to obtain a string made of n times the result of ```branch1```, where n is the result of ```branch2```.

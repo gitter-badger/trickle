@@ -12,12 +12,12 @@ class ParallelExecuteVisitorTest extends  ExecutorSpec[ParallelState] {
   it should "not starve for thread" in {
     val integer = source[Int]
 
-    val b1 = integer |> { _ mMap { _ + 1 }}
-    val b2 = integer |> { _ mMap { _ + 1 }}
-    val b3 = integer |> { _ mMap { _ + 1 }}
-    val b4 = integer |> { _ mMap { _ + 1 }}
-    val b5 = integer |> { _ mMap { _ + 1 }}
-    val b6 = integer |> { _ mMap { _ + 1 }}
+    val b1 = integer |> { _ ioMap { _ + 1 }}
+    val b2 = integer |> { _ ioMap { _ + 1 }}
+    val b3 = integer |> { _ ioMap { _ + 1 }}
+    val b4 = integer |> { _ ioMap { _ + 1 }}
+    val b5 = integer |> { _ ioMap { _ + 1 }}
+    val b6 = integer |> { _ ioMap { _ + 1 }}
 
     val m1 = (b1, b2) |> { (b1,b2) => (b1,b2).foldLeft(0.successIO)(sum) }
     val m2 = (m1, b1, b2) |> { (m1,b1,b2) => (m1,b1,b2).foldLeft(0.successIO)(sum) }

@@ -32,7 +32,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   it should "execute mapping step" in {
     val integer = source[Int]
 
-    val flow = integer |> { _ mMap { _.toString } }
+    val flow = integer |> { _ ioMap { _.toString } }
 
     val (result, _) = execute(flow, integer -> 1)
 
@@ -42,7 +42,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   it should "fail when executing mapping step and input is missing" in {
     val integer = source[Int]
 
-    val f: StepIO[Int] => StepIO[String] = _ mMap { _.toString }
+    val f: StepIO[Int] => StepIO[String] = _ ioMap { _.toString }
 
     val flow = integer |> { f }
 
@@ -86,7 +86,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   it should "execute chained mapping steps" in {
     val integer = source[Int]
 
-    val inc = (_: StepIO[Int]) mMap { _ + 1 }
+    val inc = (_: StepIO[Int]) ioMap { _ + 1 }
 
     val flow = integer |> { inc } |> { inc } |> { inc }
 
@@ -111,8 +111,8 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     val integer = source[Int]
     val string = source[String]
 
-    val flow = (integer |> { _ mMap { _ * 2 } },
-      string |> { _ mMap { s => s + s } }, integer) |> {
+    val flow = (integer |> { _ ioMap { _ * 2 } },
+      string |> { _ ioMap { s => s + s } }, integer) |> {
       (i, s, j) => (i |@| s |@| j) { case (a, b, c) => Some(b.get * (a.get + c.get))}
     }
 
@@ -125,7 +125,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     val integer = source[Int]
 
     var count = 0
-    val branch = integer |> { _ mMap { x => count += 1; count } }
+    val branch = integer |> { _ ioMap { x => count += 1; count } }
     val flow = (branch, branch) |> { (a, b) => (a |@| b) { case (a, b) => Some((a.get, b.get) )}}
 
     val (result, _) = execute(flow, integer -> 1)
@@ -136,9 +136,9 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   it should "not block on diamond topology" in {
     val integer = source[Int]
 
-    val root = integer |> { _ mMap { _ + 1 }}
-    val b1 = root |> { _ mMap { _ * 2 }} |> { _ mMap { _.toString }}
-    val b2 = root |> { _ mMap { _ * 3 }}
+    val root = integer |> { _ ioMap { _ + 1 }}
+    val b1 = root |> { _ ioMap { _ * 2 }} |> { _ ioMap { _.toString }}
+    val b2 = root |> { _ ioMap { _ * 3 }}
 
     val flow = (b1, b2) |> { (b1, b2) => (b1 |@| b2) { case (a, b) => Some((a.get, b.get))}}
 
@@ -150,7 +150,7 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   it should "return failure when parents steps fails" in {
     val integer = source[Int]
 
-    val branch1 = integer |> { _ mMap { _ + 1 }} |> { x => new RuntimeException("error1").failureIO[String] }
+    val branch1 = integer |> { _ ioMap { _ + 1 }} |> { x => new RuntimeException("error1").failureIO[String] }
     val branch2: Apply1Step[Int, String] = integer |> { x => throw new RuntimeException("error2")}
     val flow = (branch1, branch2) |> { (a, b) =>
       (a |@| b) { case (a, b) => Some(a.get + b.get)}
@@ -217,10 +217,10 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
     val source1 = source[Int]
     val source2 = source[Int]
 
-    val flow = switch |< { _ mMap[Step[Int]] { y =>
+    val flow = switch |< { _ ioMap[Step[Int]] { y =>
       if (y < 0) throw new RuntimeException("cannot process negative input")
       if (y == 0) source1 else source2
-    }} |> { _ mMap { _ + 1} }
+    }} |> { _ ioMap { _ + 1} }
 
     execute(flow, switch -> None, source1 -> 1, source2 -> 2)._1 shouldBe Success(None)
     execute(flow, switch -> 0, source1 -> 1, source2 -> 2)._1 shouldBe Success(Some(2))
@@ -233,14 +233,14 @@ trait ExecutorSpec[S <: ExecutorState[S]] extends UnitSpec {
   it should "be able to process SeqStep" in {
     val intList = source[List[Int]]
 
-    val root = intList |> { _ mMap { _ map toIO[Int] } }
+    val root = intList |> { _ ioMap { _ map toIO[Int] } }
 
-    val flow = root ||> { _ mMap(_ + 1)}
+    val flow = root ||> { _ ioMap(_ + 1)}
 
     val result = execute(flow, intList -> List(1, 2, InputMissingException("error")))._1
     result shouldBe Success(Some(Success(Some(2)) :: Success(Some(3)) :: Failure(NonEmptyList(InputMissingException("error"))) :: Nil))
 
-    val flowWithException = root ||> { _ mMap { x => if (x == 1) throw InputMissingException("foo") else x + 1} }
+    val flowWithException = root ||> { _ ioMap { x => if (x == 1) throw InputMissingException("foo") else x + 1} }
 
     val resultWithException = execute(flowWithException, intList -> List(1, 2, InputMissingException("error")))._1
     resultWithException shouldBe Success(Some(Failure(NonEmptyList(InputMissingException("foo"))) :: Success(Some(3)) :: Failure(NonEmptyList(InputMissingException("error"))) :: Nil))

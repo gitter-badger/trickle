@@ -14,11 +14,11 @@ object convertStringToIntegerAndIncrement extends App {
   //  - a failure in which case we will have an list of at least one exception
   //  - a success with a value (None)
   //  - a success without a value (Some)
-  // For convenience, trickle provide the mMap operator which unwrap the Validation and the Option
-  val integer = input |> { _.mMap(_.toInt) }
+  // For convenience, trickle provide the ioMap operator which unwrap the Validation and the Option
+  val integer = input |> { _.ioMap(_.toInt) }
 
   // Increment the Int.
-  val flow = integer |> { _.mMap(_ + 1) }
+  val flow = integer |> { _.ioMap(_ + 1) }
 
   // Execute the flow defined above with input "41".
   // Executing a flow returns the result of the flow execution and the final execution state which contain the result
@@ -47,8 +47,8 @@ object parallelFlow extends App {
   val inputString = source[String]
   val inputIntAsString = source[String]
 
-  val branch1 = inputString |> { _.mMap(_ + " rocks ") }
-  val branch2 = inputIntAsString |> { _.mMap(_.toInt) } |> { _.mMap(_ * 2) }
+  val branch1 = inputString |> { _.ioMap(_ + " rocks ") }
+  val branch2 = inputIntAsString |> { _.ioMap(_.toInt) } |> { _.ioMap(_ * 2) }
 
   // We want to combine the results produced by the two branches.
   val flow = (branch1, branch2) |> { (s, i) => (s |@| i) { case (os, oi) => Some(os.get * oi.get) } }
@@ -65,7 +65,7 @@ object conditionalBranching extends App {
   val inputString2 = source[String]
   val inputCondition = source[Int]
 
-  val flow = inputCondition |< { _.mMap[Step[String]] { i => if (i == 0) inputString1 else inputString2 } }
+  val flow = inputCondition |< { _.ioMap[Step[String]] { i => if (i == 0) inputString1 else inputString2 } }
 
   val (result, state) = flow.execute(inputString1 -> "foo", inputString2 -> "bar", inputCondition -> 0)
 
@@ -75,7 +75,7 @@ object conditionalBranching extends App {
 object traversable extends App {
   val input = source[Seq[String]]
 
-  val flow = input |> { _ mMap { _ map(_.toInt) }}
+  val flow = input |> { _ ioMap { _ map(_.toInt) }}
 
   val (result, state) = flow.execute(input -> List("1", "2", "3", "foo"))
 
@@ -85,7 +85,7 @@ object traversable extends App {
 
   // If we lift the content of the input to a StepIO and then use the operator ||> , the flow execution won't
   // fail entirely, only the conversion of foo will result in a failure.
-  val flow2 = input |> { _ mMap { _ map toIO[String] }} ||> { _ mMap(_.toInt) }
+  val flow2 = input |> { _ ioMap { _ map toIO[String] }} ||> { _ ioMap(_.toInt) }
 
   val (result2, state2) = flow2.execute(input -> List("1", "2", "3", "foo"))
 

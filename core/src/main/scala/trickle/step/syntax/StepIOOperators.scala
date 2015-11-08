@@ -20,7 +20,7 @@ trait StepIOOperators {
   }
 
   implicit class StepIOOperators[A](self: StepIO[A]) {
-    def mMap[B](f: A => B): StepIO[B] = self map { inner: Option[A] => inner map f }
+    def ioMap[B](f: A => B): StepIO[B] = self map { inner: Option[A] => inner map f }
   }
 
   def toIO[B](a: Any): StepIO[B] = a match {
