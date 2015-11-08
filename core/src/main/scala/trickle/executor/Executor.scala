@@ -1,9 +1,9 @@
 package trickle.executor
 
-import trickle.step.{StepIO, OptionStep}
+import trickle.step.{StepIO, Step}
 
 trait Executor[S <: ExecutorState[S]] {
-  def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], S)
+  def execute[O](step: Step[O], input: (Step[_], Any)*): (StepIO[O], S)
 }
 
 object Executor {

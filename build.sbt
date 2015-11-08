@@ -20,10 +20,12 @@ val scalazVersion = "7.1.4"
 lazy val trickle = project.in(file("."))
   .settings(noPublishSettings)
   .aggregate(core)
+  .aggregate(examples)
 
 lazy val core = project.in(file("core"))
   .settings(moduleName := "trickle-core")
-  .settings(tricleSettings)
+  .settings(trickleSettings)
+  .settings(publishSettings)
   .settings(libraryDependencies ++= Seq(
     "org.scalaz" %% "scalaz-core" % scalazVersion,
     "org.scalaz" %% "scalaz-concurrent" % scalazVersion,
@@ -34,8 +36,14 @@ lazy val core = project.in(file("core"))
     "org.typelevel" %% "scalaz-scalatest" % "0.3.0" % "test"
   ))
 
+lazy val examples = project.in(file("examples"))
+  .settings(moduleName := "trickle-examples")
+  .settings(trickleSettings)
+  .settings(noPublishSettings)
+  .dependsOn(core)
 
-lazy val tricleSettings = buildSettings ++ commonSettings ++ scoverageSettings ++ publishSettings
+
+lazy val trickleSettings = buildSettings ++ commonSettings ++ scoverageSettings
 
 lazy val commonSettings = Seq(
   scalacOptions ++= commonScalacOptions
@@ -112,5 +120,5 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
-addCommandAlias("build", ";scalastyle;core/compile;coverage;core/test")
+addCommandAlias("build", ";core/scalastyle;coverage;core/test;examples/compile")
 addCommandAlias("gitSnapshots", ";set version in ThisBuild := git.gitDescribedVersion.value.get + \"-SNAPSHOT\"")

@@ -4,7 +4,7 @@ import java.util.concurrent.ExecutorService
 
 import trickle.Visitor
 import trickle.step._
-import trickle.step.StepIOOperators._
+import trickle.syntax.step._
 import shapeless.ops.hlist.{RightFolder, LeftFolder}
 import shapeless.{HNil, HList, Poly2, Poly}
 
@@ -40,11 +40,11 @@ trait ExecutionUtils[S <: ExecutorState[S]] { self: Visitor[S] =>
   }
 
   object visitParents extends Poly {
-    implicit def caseStep[O] = use((state: stateType, step: OptionStep[O]) => state.putAll(step.accept(self, state)))
+    implicit def caseStep[O] = use((state: stateType, step: Step[O]) => state.putAll(step.accept(self, state)))
   }
 
   object getResults extends Poly2 {
-    implicit def case1[O, T <: HList] = at[OptionStep[O], (T, stateType)] {
+    implicit def case1[O, T <: HList] = at[Step[O], (T, stateType)] {
       case (step, (acc, state)) => (state.get(step).get.result :: acc, state)
     }
   }
@@ -74,7 +74,7 @@ trait ParallelExecutionUtils[S <: ExecutorState[S]] extends ExecutionUtils[S] { 
   implicit val executor: ExecutorService
 
   object visitParentsParallel extends Poly2 {
-    implicit def case1[O] = at[OptionStep[O], (List[Task[stateType]], stateType)] {
+    implicit def case1[O] = at[Step[O], (List[Task[stateType]], stateType)] {
       case (step, (tasks, state)) => ( tasks :+ Task { blocking { state.putAll(step.accept(self, state)) }}, state)
     }
   }

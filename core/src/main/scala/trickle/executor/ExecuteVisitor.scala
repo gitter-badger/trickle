@@ -1,22 +1,22 @@
 package trickle.executor
 
+import trickle.syntax.step._
 import trickle.{Visitor, HMap}
 import trickle.step._
-import trickle.step.StepIOOperators._
 import shapeless._
 
 import scala.collection.GenTraversableLike
 
-class State(val content: HMap[(OptionStep ~?> StepResult)#λ]) extends ExecutorState[State] {
-  implicit object constraint extends (OptionStep ~?> StepResult)
+class State(val content: HMap[(Step ~?> StepResult)#λ]) extends ExecutorState[State] {
+  implicit object constraint extends (Step ~?> StepResult)
 
-  override def get[O](step: OptionStep[O]): Option[StepResult[O]] = content.get(step)
+  override def get[O](step: Step[O]): Option[StepResult[O]] = content.get(step)
 
-  override def put[O](step: OptionStep[O], stepResult: StepResult[O]): State = new State(content + (step, stepResult))
+  override def put[O](step: Step[O], stepResult: StepResult[O]): State = new State(content + (step, stepResult))
 
   override def putAll(other: State): State = new State(content ++ other.content)
 
-  override def processStep[O](step: OptionStep[O])(f: => State): State = content.get(step) match {
+  override def processStep[O](step: Step[O])(f: => State): State = content.get(step) match {
     case None => f
     case _ => this
   }
@@ -72,13 +72,13 @@ class ExecuteVisitor extends ExecutionUtils[State] with Visitor[State] with Exec
     val newState = step.parent.accept(this, state)
     val input = newState.get(step.parent).get.result
     import step._
-    val output = input mMap { (x: S[StepIO[I]]) => x.map(applySafe(step.f))}
+    val output = input ioMap { (x: S[StepIO[I]]) => x.map(applySafe(step.f))}
     newState.put(step, StepResult(output))
   }
 
-  override def execute[O](step: OptionStep[O], input: (OptionStep[_], Any)*): (StepIO[O], State) = {
+  override def execute[O](step: Step[O], input: (Step[_], Any)*): (StepIO[O], State) = {
     val m = Map(input:_*) mapValues { x => StepResult(toIO(x)) }
-    val state = step.accept(this, new State(new HMap[(OptionStep ~?> StepResult)#λ](m.asInstanceOf[Map[Any, Any]])))
+    val state = step.accept(this, new State(new HMap[(Step ~?> StepResult)#λ](m.asInstanceOf[Map[Any, Any]])))
     (state.get(step).get.result, state)
   }
 }
