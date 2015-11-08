@@ -15,7 +15,20 @@ trickle-core depends on
 * shapeless
 * commons-pool2
 
-## Code samples
+## Getting started
+
+### SBT
+
+```scala
+libraryDependencies ++= "com.github.benoitlouy" %% 
+```
+
+### Imports
+
+```scala
+import trickle.syntax.executor._ // operators to executed workflows
+import trickle.syntax.step._ // operators to create workflows
+```
 
 ### Linear workflow
 
@@ -120,3 +133,6 @@ Trickle will automatically spawn threads to execute the branches concurrently. I
 You can combine the results of up to 22 branches, in which case Trickle will execute the 22 branches in parallel.
 
 The result of the above workflow executions is `Success(Some("trickle rocks trickle rocks trickle rocks trickle rocks "))`
+
+### Other code samples
+You can have a look at the sources [here](https://github.com/benoitlouy/trickle/tree/master/examples/src/main/scala/trickle) for other example of usage of the library. Including conditional branching and processing of traversable objects.

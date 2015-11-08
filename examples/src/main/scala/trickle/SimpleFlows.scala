@@ -50,8 +50,11 @@ object parallelFlow extends App {
   val branch1 = inputString |> { _.mMap(_ + " rocks ") }
   val branch2 = inputIntAsString |> { _.mMap(_.toInt) } |> { _.mMap(_ * 2) }
 
+  // We want to combine the results produced by the two branches.
   val flow = (branch1, branch2) |> { (s, i) => (s |@| i) { case (os, oi) => Some(os.get * oi.get) } }
 
+  // Using the executeParallel method will execute branch1 and branch2 at the same time.
+  // If we used execute, branch1 would have been executed first and then branch2 would have been executed.
   val (result, state) = flow.executeParallel(inputString -> "trickle", inputIntAsString -> "2")
 
   println(s"Flow result: ${result}")
@@ -69,3 +72,23 @@ object conditionalBranching extends App {
   println(s"Flow result: ${result}")
 }
 
+object traversable extends App {
+  val input = source[Seq[String]]
+
+  val flow = input |> { _ mMap { _ map(_.toInt) }}
+
+  val (result, state) = flow.execute(input -> List("1", "2", "3", "foo"))
+
+  // Foo cannot be converted to an Int and the entire flow fails and we will lose the result
+  // of the conversion of 1, 2 and 3.
+  println(s"Flow result: ${result}")
+
+  // If we lift the content of the input to a StepIO and then use the operator ||> , the flow execution won't
+  // fail entirely, only the conversion of foo will result in a failure.
+  val flow2 = input |> { _ mMap { _ map toIO[String] }} ||> { _ mMap(_.toInt) }
+
+  val (result2, state2) = flow2.execute(input -> List("1", "2", "3", "foo"))
+
+  println(s"Flow result: ${result2}")
+
+}
